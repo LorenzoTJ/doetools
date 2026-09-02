@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use doetools in your work, please cite the software and the version used."
+title: "doetools"
+type: software
+authors:
+  - family-names: "Teja"
+    given-names: "Lorenzo"
+repository-code: "https://github.com/LorenzoTJ/doetools"
+version: "0.1.0"
+license: "MIT"

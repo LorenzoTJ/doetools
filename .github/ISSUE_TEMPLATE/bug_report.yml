@@ -1,0 +1,52 @@
+name: Bug report
+description: Report reproducible incorrect behavior in doetools.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for taking the time to report a problem.
+  - type: input
+    id: version
+    attributes:
+      label: doetools version
+      description: Run `python -c "import doetools; print(doetools.__version__)"`.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version and operating system
+      placeholder: Python 3.13.2 on Windows 11
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Provide the smallest complete example that demonstrates the issue.
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Error output
+      description: Paste the complete traceback or relevant output, with sensitive data removed.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: I removed confidential data and credentials from this report.
+          required: true

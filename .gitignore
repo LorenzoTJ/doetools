@@ -1,0 +1,59 @@
+# --- Virtual environment ---
+.venv/
+.release-venv/
+.uv-cache/
+venv/
+ENV/
+
+# --- Python cache and compiled files ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- VS Code and other IDE settings ---
+.vscode/
+.idea/
+
+# --- Jupyter / IPython ---
+.ipynb_checkpoints/
+
+# --- Logs, temp, and local data ---
+*.log
+*.tmp
+*.bak
+tmp/
+.DS_Store        # macOS finder cache
+Thumbs.db        # Windows thumbnail cache
+
+# --- Build / distribution ---
+build/
+_build/
+dist/
+*.egg-info/
+.eggs/
+.ruff_cache/
+.mypy_cache/
+.tox/
+
+# --- Environment / secrets ---
+.env
+.env.*
+*.sqlite3
+
+# --- Tests / coverage reports ---
+htmlcov/
+.coverage
+coverage.xml
+.pytest_cache/
+.pytest-cache/
+.pytest-tmp/
+
+debug*
+
+# --- Extra Code ---
+extra/
+
+# --- Supplementary materials ---
+supplementary_materials/
+
