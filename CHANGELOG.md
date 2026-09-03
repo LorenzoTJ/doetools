@@ -24,5 +24,16 @@ where it is compatible with Python's versioning rules.
   `vars_type` lists. Imported continuous levels are taken from the file and
   may be non-equally spaced; coded imports are decoded with the supplied factor
   definitions.
+- The plotting API now exposes ten standard `plot_*` methods. Model diagnostics
+  are selected through `plot_diagnostics(view=...)`, focused main effects and
+  interactions use optional selectors on their collection methods, and
+  confirmation plots use `plot_confirmation(view=...)`.
+
+### Removed
+
+- Removed the redundant diagnostic, singular-effect, singular-interaction, and
+  confirmation-specific plotting methods, together with accidentally public
+  renderer and plotting-data helpers. This is an intentional pre-1.0 breaking
+  change.
 
 [Unreleased]: https://github.com/LorenzoTJ/doetools/commits/dev

@@ -32,3 +32,9 @@ def test_utils_submodules():
         assert design_wizard is not None
     except ImportError as e:
         pytest.fail(f"Failed to import utils modules: {e}")
+
+
+def test_graphs_package_exports_only_public_facade():
+    import doetools.graphs as graphs
+
+    assert graphs.__all__ == ["GraphsMixin"]

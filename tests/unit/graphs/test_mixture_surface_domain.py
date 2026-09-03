@@ -5,7 +5,7 @@ import pandas as pd
 
 from doetools import ConstrainedMixtureDesign, MixtureFactor
 from doetools.graphs.plot_api_mixin import GraphsMixin
-from doetools.graphs.renderers import Renderer
+from doetools.graphs.renderers import _RendererMixin
 from doetools.utils.model_spec import ModelTerms
 
 
@@ -23,7 +23,7 @@ def _constrained_grid():
 
 
 def _render_contour(renderer, grid, response, mode):
-    return renderer.render_contour_mixture(
+    return renderer._render_contour_mixture(
         grid_df_scaled=grid,
         grid_df=grid,
         response=response,
@@ -109,7 +109,7 @@ def test_allowed_domain_is_propagated_by_all_public_surface_methods():
 
 
 def test_allowed_contour_uses_hull_mask_border_and_zoom():
-    renderer = Renderer()
+    renderer = _RendererMixin()
     grid = _constrained_grid()
     response = np.linspace(1.0, 2.0, len(grid))
 
@@ -123,7 +123,7 @@ def test_allowed_contour_uses_hull_mask_border_and_zoom():
     domain_trace = next(
         trace for trace in figure.data if trace.name == "Allowed domain"
     )
-    domain = renderer.build_mixture_surface_domain(
+    domain = renderer._build_mixture_surface_domain(
         grid, "A", "B", "C", resolution=40, mode="allowed"
     )
     assert np.allclose(domain_trace.x, domain.boundary[:, 0])
@@ -137,7 +137,7 @@ def test_allowed_contour_uses_hull_mask_border_and_zoom():
 
 
 def test_full_contour_remains_the_default():
-    renderer = Renderer()
+    renderer = _RendererMixin()
     grid = _constrained_grid()
 
     figure = _render_contour(
@@ -159,11 +159,11 @@ def test_full_contour_remains_the_default():
 
 
 def test_allowed_surface_mesh_is_limited_to_hull():
-    renderer = Renderer()
+    renderer = _RendererMixin()
     grid = _constrained_grid()
     response = np.linspace(1.0, 2.0, len(grid))
 
-    figure = renderer.render_surface_mixture(
+    figure = renderer._render_surface_mixture(
         grid_df_scaled=grid,
         grid_df=grid,
         response=response,
@@ -179,7 +179,7 @@ def test_allowed_surface_mesh_is_limited_to_hull():
     simplices = np.column_stack([mesh.i, mesh.j, mesh.k])
     centroids = points[simplices].mean(axis=1)
 
-    domain = renderer.build_mixture_surface_domain(
+    domain = renderer._build_mixture_surface_domain(
         grid, "A", "B", "C", mode="allowed"
     )
     canonical_centroid = np.array([0.5, np.sqrt(3) / 6.0])
@@ -197,7 +197,7 @@ def test_allowed_surface_mesh_is_limited_to_hull():
 
 
 def test_degenerate_allowed_domain_does_not_raise():
-    renderer = Renderer()
+    renderer = _RendererMixin()
     grid = pd.DataFrame(
         [
             [0.70, 0.20, 0.10],
@@ -209,7 +209,7 @@ def test_degenerate_allowed_domain_does_not_raise():
     response = np.array([1.0, 1.5, 2.0])
 
     contour = _render_contour(renderer, grid, response, "allowed")
-    surface = renderer.render_surface_mixture(
+    surface = renderer._render_surface_mixture(
         grid_df_scaled=grid,
         grid_df=grid,
         response=response,
