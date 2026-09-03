@@ -14,6 +14,8 @@ diagnostics, exploring response surfaces, and validating predictions.
 
 `doetools` is designed for scientists and engineers seeking a free, reproducible, and integrated alternative to manually assembling experimental design and analysis workflows.
 
+To access the full documentation click [here](https://doetools.readthedocs.io/en/latest/).
+
 ## Features
 
 * **Design recommendations** from high-level inputs;
@@ -28,12 +30,11 @@ diagnostics, exploring response surfaces, and validating predictions.
 
 | Category | Designs |
 | --- | --- |
-| Screening | Plackett-Burman, fractional factorial |
-| Factorial | Full factorial |
-| Response surface | Central composite (CCC, CCF, CCI), Box-Behnken |
+| Screening | Plackett-Burman, fractional factorial, two-level full factorial |
+| Response surface | Three-level full factorial, Central composite (CCC, CCF, CCI), Box-Behnken |
 | Mixture | Simplex lattice, simplex centroid, constrained mixture |
 | Optimal | D-optimal, D-optimal augmentation |
-| Existing experiments | Import design |
+| External generated designs | Import design |
 
 ## Requirements and platforms
 
@@ -102,29 +103,20 @@ responses with `design.import_responses(...)`, defining `ModelTerms`, and callin
 
 ## Documentation and examples
 
-- [Full documentation source](https://github.com/LorenzoTJ/doetools/tree/main/docs/source)
-- [Getting started guide](https://github.com/LorenzoTJ/doetools/blob/main/docs/source/getting_started/overview.rst)
-- [Complete example notebooks](https://github.com/LorenzoTJ/doetools/tree/main/docs/source/examples)
-- [Mathematical foundations](https://github.com/LorenzoTJ/doetools/blob/main/docs/source/math.rst)
+The documentation is built with Sphinx.
 
-The documentation is built with Sphinx. A hosted Read the Docs link will replace
-the source link after the Read the Docs project is created and its final slug is
-known.
+- [Full documentation source](https://doetools.readthedocs.io/en/latest/)
+- [Complete example notebooks](https://doetools.readthedocs.io/en/latest/examples/index.html)
 
 ## Development
 
 The development version of doetools is available on [GitHub](https://github.com/LorenzoTJ/doetools). Bug reports and feature suggestions are welcome through GitHub Issues. Detailed contributor and development guidelines will be provided in a future release.
 
-## Project status and limitations
+## Project status and scope
 
-- The project is in an initial public-release stage (`0.1.x`); backward
-  compatibility is not guaranteed until `1.0`.
-- Statistical output should be interpreted together with experimental context,
-  model assumptions, and domain expertise. The package does not replace design
-  review or laboratory quality procedures.
-- Models are fitted independently for each response using ordinary least squares;
-  specialized correlated-response, time-series, Bayesian, or mixed-effects models
-  are outside the current scope.
+- `doetools` is currently in its initial public-release stage (`0.1.x`). Backward compatibility is not guaranteed until version `1.0`; API changes and other notable updates are documented in the [CHANGELOG](CHANGELOG.md)
+- Statistical results should be interpreted in the context of the experimental design, model assumptions, and relevant domain expertise. `doetools` does not replace experimental review or laboratory quality procedures.
+- Models are currently fitted independently for each response using ordinary least squares (OLS). Correlated-response, time-series, Bayesian, mixed-effects, and other specialized modelling approaches are outside the current scope.
 
 ## Citation
 
