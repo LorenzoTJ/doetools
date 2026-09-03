@@ -611,8 +611,10 @@ def test_complete_pdf_smoke_for_imported_design(tmp_path):
         "Pressure": np.tile([1.0, 3.0, 5.0], 3),
     }).to_csv(source, index=False)
     design = ImportDesign(
-        vars=["Temperature", "Pressure"],
-        vars_type=["cont", "cont"],
+        factors={
+            "Temperature": ContinuousFactor(3, 20.0, 80.0),
+            "Pressure": ContinuousFactor(3, 1.0, 5.0),
+        },
         file_path=str(source),
     )
     design = _fit_design_for_pdf(

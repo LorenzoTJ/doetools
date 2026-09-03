@@ -51,6 +51,7 @@ To get started with *doetools*, please refer to the following sections:
 
    factors
    design_advisor
+   designs/import_design
    designs/process/index
    designs/mixture/index
    designs/optimal/index

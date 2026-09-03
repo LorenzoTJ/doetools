@@ -11,10 +11,18 @@ where it is compatible with Python's versioning rules.
 ### Added
 
 - Initial public release preparation.
+- Documentation and validation for importing external process and mixture designs.
 - Design generation for process, mixture, constrained-mixture, and D-optimal
   experiments.
 - Regression analysis, interactive visualization, prediction, validation,
   optimization, Excel workflows, and PDF reporting.
 - Sphinx documentation and end-to-end example notebooks.
+
+### Changed
+
+- `ImportDesign` now accepts a factor mapping instead of separate `vars` and
+  `vars_type` lists. Imported continuous levels are taken from the file and
+  may be non-equally spaced; coded imports are decoded with the supplied factor
+  definitions.
 
 [Unreleased]: https://github.com/LorenzoTJ/doetools/commits/dev
