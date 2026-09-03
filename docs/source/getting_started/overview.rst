@@ -88,6 +88,7 @@ Now that you understand the basics:
 
 * Review design-specific pages for your experimental scenario:
 
+  * :doc:`../designs/import_design`
   * :doc:`../designs/process/index`
   * :doc:`../designs/mixture/index`
   * :doc:`../designs/optimal/index`
