@@ -45,47 +45,21 @@ provide those workflows.
    * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_regression_coefficients`
      - Compare fitted coefficients and their confidence intervals.
      - One figure, optionally with a response selector.
-   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_residuals`
-     - Inspect residuals by run for one or all fitted responses.
+   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_diagnostics`
+     - Select an overview, observed-versus-predicted, residual, Q-Q, or
+       histogram diagnostic.
      - One figure, optionally with a response selector.
-   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_exp_vs_pred`
-     - Compare observed and predicted values for one or all fitted responses.
-     - One figure, optionally with a response selector.
-   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_model_diagnostics`
-     - Inspect the four standard diagnostic views together.
-     - One four-panel figure.
-   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_residuals_vs_fitted`
-     - Check residual pattern and changing variance for one response.
-     - One figure.
-   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_residuals_by_run`
-     - Check drift or run-order effects for one response.
-     - One figure.
-   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_qq_residuals`
-     - Assess residual normality for one response.
-     - One figure.
-   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_residuals_histogram`
-     - Inspect the residual distribution for one response.
-     - One figure.
    * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_main_effects`
      - Compare fitted main-effect profiles for all non-mixture factors.
      - One multi-panel figure.
-   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_main_effect`
-     - Inspect one fitted non-mixture factor profile.
-     - One figure.
    * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_interactions`
      - Compare all fitted two-factor interactions for a non-mixture design.
      - One figure with a factor-pair selector.
-   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_interaction`
-     - Inspect one fitted two-factor interaction.
-     - One figure.
    * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_mixture_trace`
      - Inspect fitted component traces through the centroid blend.
      - One figure.
-   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_confirmation_exp_vs_pred`
-     - Compare grouped confirmation means with predictions.
-     - One figure for one response.
-   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_confirmation_residuals`
-     - Inspect confirmation residuals against grouped observed means.
+   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_confirmation`
+     - Select observed-versus-predicted or residual confirmation diagnostics.
      - One figure for one response.
    * - :meth:`~doetools.utils.pareto.ParetoMixin.plot_pareto_front`
      - Inspect non-dominated solutions after ``compute_pareto_front()``.
@@ -233,53 +207,27 @@ level.
 Model diagnostics
 -----------------
 
-Diagnostic plots require a fitted model. Set ``cv=True`` to use leave-one-out
-cross-validation predictions and residuals instead of training values. Methods
-whose ``response`` argument is optional display a response selector when it is
-omitted; the single-response methods are useful when composing dashboards.
+Diagnostic plots require a fitted model. ``plot_diagnostics`` selects the view
+through ``view``; supported values are ``"overview"``,
+``"observed_vs_predicted"``, ``"residuals_vs_fitted"``,
+``"residuals_by_run"``, ``"qq"``, and ``"histogram"``. Set ``cv=True`` to use
+leave-one-out cross-validation predictions and residuals. Omitting ``response``
+adds a response selector to every view.
 
-Combined and multi-response views
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_model_diagnostics
+.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_diagnostics
 
 .. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_regression_coefficients
 
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_residuals
-
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_exp_vs_pred
-
 .. code-block:: python
 
-   diagnostics = design.plot_model_diagnostics(response="Yield", cv=True)
+   diagnostics = design.plot_diagnostics(response="Yield", cv=True)
    coefficients = design.plot_regression_coefficients(response="Yield")
-   residuals_by_run = design.plot_residuals(
+   residuals_by_run = design.plot_diagnostics(
        response="Yield",
+       view="residuals_by_run",
        x_axis="exp_order",
    )
-
-Individual diagnostic views
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Use these methods to display a single diagnostic for one response.
-``plot_residuals_by_run`` and ``plot_residuals`` show the same diagnostic family;
-the former always targets one response, while the latter can provide a response
-selector.
-
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_residuals_vs_fitted
-
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_residuals_by_run
-
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_qq_residuals
-
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_residuals_histogram
-
-.. code-block:: python
-
-   residual_pattern = design.plot_residuals_vs_fitted("Yield")
-   run_pattern = design.plot_residuals_by_run("Yield", x_axis="exp_idx")
-   normality = design.plot_qq_residuals("Yield")
-   distribution = design.plot_residuals_histogram("Yield")
+   normality = design.plot_diagnostics(response="Yield", view="qq")
 
 Model effects
 -------------
@@ -293,30 +241,25 @@ non-parallel profiles indicate that the fitted effect of one factor depends on
 the other. These methods evaluate the fitted model and are not raw response
 summaries.
 
-The plural methods build dashboards over all applicable factors or pairs. The
-singular methods return one focused figure. These four methods reject mixture
-components; use ``plot_mixture_trace`` for mixture models.
+Omit ``factor`` or ``factors`` to build the complete dashboard. Supply one
+factor or one two-factor tuple to return a focused figure. Both methods reject
+mixture components; use ``plot_mixture_trace`` for mixture models.
 
 .. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_main_effects
 
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_main_effect
-
 .. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_interactions
-
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_interaction
 
 .. code-block:: python
 
    all_main_effects = design.plot_main_effects("Yield", coded=False)
-   temperature_effect = design.plot_main_effect(
+   temperature_effect = design.plot_main_effects(
        "Yield",
        factor="Temperature",
        coded=False,
    )
-   selected_interaction = design.plot_interaction(
+   selected_interaction = design.plot_interactions(
        "Yield",
-       factor1="Temperature",
-       factor2="Pressure",
+       factors=("Temperature", "Pressure"),
    )
 
 Mixture traces
@@ -346,16 +289,15 @@ These plots use grouped confirmation runs loaded through
 :doc:`Model validation <model_validation>` for the complete workflow and the
 formulas used for validation intervals.
 
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_confirmation_exp_vs_pred
-   :noindex:
-
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_confirmation_residuals
+.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_confirmation
    :noindex:
 
 .. code-block:: python
 
-   comparison = design.plot_confirmation_exp_vs_pred(response="Yield")
-   residuals = design.plot_confirmation_residuals(response="Yield")
+   comparison = design.plot_confirmation(
+       response="Yield", view="observed_vs_predicted"
+   )
+   residuals = design.plot_confirmation(response="Yield", view="residuals")
 
 Pareto-front plots
 ------------------
