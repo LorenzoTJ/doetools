@@ -1,13 +1,13 @@
 import numpy as np
 import pandas as pd
 
-from doetools.graphs.data_builder import DataBuilder
+from doetools.graphs.data_builder import _PlotDataMixin
 from doetools import FullFactorialDesign
 from doetools.utils.factors import ContinuousFactor, MixtureFactor
 from doetools.utils.model_spec import ModelTerms
 
 
-class MixtureGridFixture(DataBuilder):
+class MixtureGridFixture(_PlotDataMixin):
     def __init__(self):
         self._factors = {
             name: MixtureFactor(lower_bound=0.0, upper_bound=1.0)

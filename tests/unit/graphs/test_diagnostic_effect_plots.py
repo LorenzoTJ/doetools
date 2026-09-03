@@ -1,8 +1,11 @@
+import inspect
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from doetools import FullFactorialDesign, SimplexCentroidDesign
+from doetools.graphs.plot_api_mixin import GraphsMixin
 from doetools.utils.factors import (
     CategoricalFactor,
     ContinuousFactor,
@@ -97,19 +100,42 @@ def _fitted_mixture_design():
     return design
 
 
-@pytest.mark.parametrize(
-    "method_name",
-    [
+def test_graphs_mixin_exposes_only_the_ten_supported_plot_methods():
+    public_methods = {
+        name
+        for name, value in inspect.getmembers(GraphsMixin, inspect.isfunction)
+        if not name.startswith("_")
+    }
+
+    assert public_methods == {
+        "plot_confidence_interval",
+        "plot_confirmation",
+        "plot_design",
+        "plot_diagnostics",
+        "plot_interactions",
+        "plot_leverage",
+        "plot_main_effects",
+        "plot_mixture_trace",
         "plot_regression_coefficients",
-        "plot_exp_vs_pred",
-        "plot_residuals",
-        "plot_model_diagnostics",
+        "plot_response",
+    }
+
+
+@pytest.mark.parametrize(
+    "view",
+    [
+        "overview",
+        "observed_vs_predicted",
+        "residuals_vs_fitted",
+        "residuals_by_run",
+        "qq",
+        "histogram",
     ],
 )
-def test_multi_response_diagnostics_keep_dropdown(method_name):
+def test_multi_response_diagnostics_keep_dropdown(view):
     design = _fitted_process_design()
 
-    figure = getattr(design, method_name)()
+    figure = design.plot_diagnostics(view=view)
 
     assert len(figure.layout.updatemenus) == 1
     labels = [
@@ -119,22 +145,38 @@ def test_multi_response_diagnostics_keep_dropdown(method_name):
     assert labels == ["Yield", "Purity"]
 
 
-@pytest.mark.parametrize(
-    "method_name",
-    [
-        "plot_regression_coefficients",
-        "plot_exp_vs_pred",
-        "plot_residuals",
-        "plot_model_diagnostics",
-        "plot_residuals_vs_fitted",
-        "plot_qq_residuals",
-        "plot_residuals_histogram",
-    ],
-)
-def test_response_specific_diagnostics_have_no_dropdown(method_name):
+def test_multi_response_coefficients_keep_dropdown():
     design = _fitted_process_design()
 
-    figure = getattr(design, method_name)("Yield")
+    figure = design.plot_regression_coefficients()
+
+    assert [
+        button.label for button in figure.layout.updatemenus[0].buttons
+    ] == ["Yield", "Purity"]
+
+
+def test_diagnostics_reject_unknown_view():
+    design = _fitted_process_design()
+
+    with pytest.raises(ValueError, match="view must be one of"):
+        design.plot_diagnostics("Yield", view="unknown")
+
+
+@pytest.mark.parametrize(
+    "view",
+    [
+        "overview",
+        "observed_vs_predicted",
+        "residuals_vs_fitted",
+        "residuals_by_run",
+        "qq",
+        "histogram",
+    ],
+)
+def test_response_specific_diagnostics_have_no_dropdown(view):
+    design = _fitted_process_design()
+
+    figure = design.plot_diagnostics("Yield", view=view)
 
     assert len(figure.layout.updatemenus or []) == 0
     assert "Yield" in str(figure.layout.title.text)
@@ -147,8 +189,12 @@ def test_cv_diagnostics_use_predictions_stored_by_regression_result():
     result.y_hat_cv = sentinel
     result.residuals_cv = design._responses["Yield"].to_numpy() - sentinel
 
-    predicted_figure = design.plot_exp_vs_pred("Yield", cv=True)
-    residual_figure = design.plot_residuals("Yield", cv=True, x_axis="sequence")
+    predicted_figure = design.plot_diagnostics(
+        "Yield", view="observed_vs_predicted", cv=True
+    )
+    residual_figure = design.plot_diagnostics(
+        "Yield", view="residuals_by_run", cv=True, x_axis="sequence"
+    )
 
     assert np.allclose(np.asarray(predicted_figure.data[0].y, dtype=float), sentinel)
     assert np.allclose(
@@ -168,7 +214,7 @@ def test_residuals_by_run_uses_imported_experimental_order():
         }
     )
 
-    figure = design.plot_residuals_by_run("Yield")
+    figure = design.plot_diagnostics("Yield", view="residuals_by_run")
 
     assert np.array_equal(np.asarray(figure.data[0].x), exp_order)
     assert len(figure.data[0].x) == len(figure.data[0].y) == n_runs
@@ -179,7 +225,7 @@ def test_residuals_by_run_falls_back_to_one_based_sequence():
     design = _fitted_process_design()
     design._experimental_metadata = None
 
-    figure = design.plot_residuals_by_run("Yield")
+    figure = design.plot_diagnostics("Yield", view="residuals_by_run")
 
     assert np.array_equal(
         np.asarray(figure.data[0].x),
@@ -191,8 +237,8 @@ def test_residuals_by_run_falls_back_to_one_based_sequence():
 def test_main_effect_is_model_based_on_dense_prediction_grid():
     design = _fitted_process_design()
 
-    figure = design.plot_main_effect(
-        "Yield", "A", coded=True, n_points=27
+    figure = design.plot_main_effects(
+        "Yield", factor="A", coded=True, n_points=27
     )
 
     assert len(figure.data) == 1
@@ -205,8 +251,8 @@ def test_main_effect_is_model_based_on_dense_prediction_grid():
 def test_categorical_main_effect_uses_available_levels():
     design = _fitted_process_design()
 
-    figure = design.plot_main_effect(
-        "Yield", "Type", coded=False, n_points=20
+    figure = design.plot_main_effects(
+        "Yield", factor="Type", coded=False, n_points=20
     )
 
     assert list(figure.data[0].x) == ["Low", "High"]
@@ -224,8 +270,8 @@ def test_model_profile_base_uses_categorical_reference():
 def test_continuous_interaction_uses_three_fitted_profiles():
     design = _fitted_process_design()
 
-    figure = design.plot_interaction(
-        "Yield", "A", "B", coded=True, n_points=21
+    figure = design.plot_interactions(
+        "Yield", factors=("A", "B"), coded=True, n_points=21
     )
 
     assert len(figure.data) == 3
@@ -240,6 +286,13 @@ def test_interactions_collection_has_one_dropdown_entry_per_pair():
 
     assert len(figure.layout.updatemenus) == 1
     assert len(figure.layout.updatemenus[0].buttons) == 3
+
+
+def test_interactions_reject_invalid_factor_pair_shape():
+    design = _fitted_process_design()
+
+    with pytest.raises(ValueError, match="tuple containing two factor names"):
+        design.plot_interactions("Yield", factors=("A", "B", "Type"))
 
 
 @pytest.mark.parametrize("method_name", ["plot_main_effects", "plot_interactions"])

@@ -6,7 +6,7 @@ import pytest
 
 from doetools import FullFactorialDesign
 from doetools.graphs.plot_api_mixin import GraphsMixin
-from doetools.graphs.renderers import Renderer
+from doetools.graphs.renderers import _RendererMixin
 from doetools.utils.factors import CategoricalFactor, ContinuousFactor
 from doetools.utils.grid_builder import rectangular_grid
 from doetools.utils.model_spec import ModelTerms
@@ -82,9 +82,9 @@ def test_design_stores_and_validates_domain_filters():
 
 
 def test_experimental_process_contour_masks_grid_and_keeps_axes():
-    renderer = Renderer()
+    renderer = _RendererMixin()
     grid = _grid()
-    domain = renderer.build_process_surface_domain(
+    domain = renderer._build_process_surface_domain(
         grid,
         "X1",
         "X2",
@@ -94,7 +94,7 @@ def test_experimental_process_contour_masks_grid_and_keeps_axes():
     )
     response = grid["X1"].to_numpy() + 2 * grid["X2"].to_numpy()
 
-    figure = renderer.render_contour_process(
+    figure = renderer._render_contour_process(
         grid,
         "X1",
         "X2",
@@ -115,9 +115,9 @@ def test_experimental_process_contour_masks_grid_and_keeps_axes():
 
 
 def test_experimental_process_surface_masks_grid_and_keeps_scene_axes():
-    renderer = Renderer()
+    renderer = _RendererMixin()
     grid = _grid()
-    domain = renderer.build_process_surface_domain(
+    domain = renderer._build_process_surface_domain(
         grid,
         "X1",
         "X2",
@@ -127,7 +127,7 @@ def test_experimental_process_surface_masks_grid_and_keeps_scene_axes():
     )
     response = grid["X1"].to_numpy() + 2 * grid["X2"].to_numpy()
 
-    figure = renderer.render_surface_process(
+    figure = renderer._render_surface_process(
         grid,
         "X1",
         "X2",
@@ -151,14 +151,14 @@ def test_experimental_process_surface_masks_grid_and_keeps_scene_axes():
 
 
 def test_fixed_factor_level_changes_process_domain_mask():
-    renderer = Renderer()
+    renderer = _RendererMixin()
 
     def sliced_constraint(frame):
         return frame["X1"] + frame["X2"] + frame["X3"] <= 1.2
 
     low_grid = _grid(constant_level=0.1)
     high_grid = _grid(constant_level=0.7)
-    low_domain = renderer.build_process_surface_domain(
+    low_domain = renderer._build_process_surface_domain(
         low_grid,
         "X1",
         "X2",
@@ -166,7 +166,7 @@ def test_fixed_factor_level_changes_process_domain_mask():
         filters=[sliced_constraint],
         filter_grid=low_grid,
     )
-    high_domain = renderer.build_process_surface_domain(
+    high_domain = renderer._build_process_surface_domain(
         high_grid,
         "X1",
         "X2",
@@ -179,9 +179,9 @@ def test_fixed_factor_level_changes_process_domain_mask():
 
 
 def test_process_domain_degeneracies_do_not_raise():
-    renderer = Renderer()
+    renderer = _RendererMixin()
     grid = _grid(resolution=5)
-    empty_domain = renderer.build_process_surface_domain(
+    empty_domain = renderer._build_process_surface_domain(
         grid,
         "X1",
         "X2",
@@ -190,7 +190,7 @@ def test_process_domain_degeneracies_do_not_raise():
         filter_grid=grid,
     )
 
-    contour = renderer.render_contour_process(
+    contour = renderer._render_contour_process(
         grid,
         "X1",
         "X2",
@@ -198,7 +198,7 @@ def test_process_domain_degeneracies_do_not_raise():
         np.arange(len(grid), dtype=float),
         process_surface_domain=empty_domain,
     )
-    surface = renderer.render_surface_process(
+    surface = renderer._render_surface_process(
         grid,
         "X1",
         "X2",
@@ -212,20 +212,20 @@ def test_process_domain_degeneracies_do_not_raise():
 
 
 def test_process_domain_falls_back_to_available_points_or_full_grid():
-    renderer = Renderer()
+    renderer = _RendererMixin()
     grid = _grid(resolution=5)
     triangle = pd.DataFrame(
         {"X1": [0.0, 1.0, 0.0], "X2": [0.0, 0.0, 1.0]}
     )
 
-    candidate_domain = renderer.build_process_surface_domain(
+    candidate_domain = renderer._build_process_surface_domain(
         grid,
         "X1",
         "X2",
         mode="allowed",
         fallback_points=triangle,
     )
-    insufficient_domain = renderer.build_process_surface_domain(
+    insufficient_domain = renderer._build_process_surface_domain(
         grid,
         "X1",
         "X2",
