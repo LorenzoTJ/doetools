@@ -89,6 +89,16 @@ def test_load_groups_runs_and_getters_return_defensive_copies(tmp_path):
     )
 
 
+def test_load_confirmation_runs_accepts_dataframe_defensively():
+    design = _fitted_process_design()
+    frame = _confirmation_frame()
+
+    design.load_confirmation_runs(source=frame)
+    frame.loc[0, "Yield"] = 999.0
+
+    assert design.get_confirmation_responses().loc[0, "Yield"] == 10.1
+
+
 def test_pimean_matches_independent_statsmodels_calculation(tmp_path):
     design = _fitted_process_design()
     frame = _confirmation_frame()

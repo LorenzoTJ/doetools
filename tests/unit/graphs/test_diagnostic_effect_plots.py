@@ -306,13 +306,13 @@ def test_classical_effect_plots_reject_mixture_designs(method_name):
 def test_mixture_trace_uses_valid_bound_respecting_paths():
     design = _fitted_mixture_design()
     captured_grids = []
-    original_predict = design.predict
+    original_predict = design._predict
 
     def capturing_predict(matrix_to_pred, responses):
         captured_grids.append(matrix_to_pred.copy())
         return original_predict(matrix_to_pred, responses)
 
-    design.predict = capturing_predict
+    design._predict = capturing_predict
     figure = design.plot_mixture_trace("Yield", n_points=19)
 
     assert [trace.name for trace in figure.data] == ["A", "B", "C"]
