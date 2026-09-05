@@ -12,9 +12,10 @@ constrained or complex experimental regions.
 Key Features
 -----------------
 
-* **Design Reccomendations** from high-level inputs;
+* **Design recommendations** from high-level inputs;
 * **Design Generation** for process and mixture factors;
 * **Model Fitting** with ordinary least squares (OLS);
+* **External-point prediction** from CSV/XLSX with mean-response confidence intervals;
 * **Regression analysis** and **interactive visualizations** in Plotly;
 * **Multi-objective optimisation**;
 * **Model validation** through confirmation runs;
