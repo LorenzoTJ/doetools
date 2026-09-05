@@ -435,7 +435,7 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
         
         #3) Predict response(s)
         responses = [response] if second_response is None else [response, second_response]
-        predicted_responses = self.predict(matrix_to_pred=grid_df_coded, responses=responses)
+        predicted_responses = self._predict(matrix_to_pred=grid_df_coded, responses=responses)
 
         #4) Correct response if needed
         if corrected is not None:
