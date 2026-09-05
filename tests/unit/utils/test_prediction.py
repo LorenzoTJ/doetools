@@ -276,7 +276,7 @@ def test_missing_model_response_and_invalid_arguments_are_clear(tmp_path):
         design.load_prediction_points(source=path, coded=1)
 
 
-def test_saturated_model_cannot_compute_confidence_interval(tmp_path):
+def test_saturated_model_returns_predictions_without_confidence_intervals(tmp_path):
     design = FullFactorialDesign(
         {
             "A": ContinuousFactor(2, 0.0, 1.0),
@@ -298,8 +298,11 @@ def test_saturated_model_cannot_compute_confidence_interval(tmp_path):
     pd.DataFrame({"A": [0.5], "B": [0.5]}).to_csv(path, index=False)
     design.load_prediction_points(path)
 
-    with pytest.raises(ValueError, match="Confidence intervals are unavailable"):
-        design.get_prediction_results("Yield")
+    results = design.get_prediction_results("Yield")
+
+    assert np.isfinite(results["Predicted"]).all()
+    assert results["CI Lower"].isna().all()
+    assert results["CI Upper"].isna().all()
 
 
 def test_clear_and_breaking_api_surface(tmp_path):
