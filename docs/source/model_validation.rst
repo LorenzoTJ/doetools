@@ -41,9 +41,15 @@ coded values. Mixture components remain proportions regardless of this option.
 .. code-block:: python
 
    design.load_confirmation_runs(
-       file_path="confirmation_runs.xlsx",
+       source="confirmation_runs.xlsx",
        coded=False,
    )
+
+The same method accepts an in-memory DataFrame and copies it defensively:
+
+.. code-block:: python
+
+   design.load_confirmation_runs(source=confirmation_runs)
 
 The loader checks factor levels, numeric responses, continuous and mixture bounds,
 mixture sums, and configured domain filters. If validation fails, previously loaded

@@ -34,11 +34,11 @@ the report.
    )
    design.export_experiments(
        responses=["Yield"],
-       save_path="design_matrix.xlsx",
+       destination="design_matrix.xlsx",
    )
 
    # Perform the experiments, then import the completed workbook.
-   design.import_responses(file_path="completed_experiments.xlsx")
+   design.import_responses(source="completed_experiments.xlsx")
    design.compute_mlr_model()
 
    design.get_model_summary_pdf(filename="design_report.pdf")
