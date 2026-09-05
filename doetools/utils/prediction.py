@@ -126,13 +126,16 @@ class PredictionPointsMixin(_ExternalPointValidationMixin):
 
         Raises:
             TypeError: If ``alpha`` is not numeric or ``coded`` is not Boolean.
-            ValueError: If points or a usable fitted response model are unavailable,
-                or if ``alpha`` is outside the open interval ``(0, 1)``.
+            ValueError: If points or a fitted response model are unavailable, or if
+                ``alpha`` is outside the open interval ``(0, 1)``.
 
         Notes:
             Intervals are pointwise confidence intervals for the expected mean
             response. They are not prediction intervals for future observations.
             Results are calculated from the current fitted model on every call.
+            If residual degrees of freedom or the residual mean square are
+            unavailable, point predictions are still returned and both confidence
+            interval columns contain ``NaN``.
         """
         if not isinstance(coded, bool):
             raise TypeError("coded must be a boolean.")
@@ -154,11 +157,6 @@ class PredictionPointsMixin(_ExternalPointValidationMixin):
         model = fitted.model
         df_resid = float(model.df_resid)
         ms_res = float(fitted.anova.get("MS_res", np.nan))
-        if df_resid <= 0 or not np.isfinite(ms_res) or ms_res < 0:
-            raise ValueError(
-                "Confidence intervals are unavailable because the fitted model "
-                "has no valid residual degrees of freedom or residual mean square."
-            )
 
         model_points = self._build_model_matrix(coded_points, self._model_spec)
         expected_columns = list(model.params.index)
@@ -171,6 +169,15 @@ class PredictionPointsMixin(_ExternalPointValidationMixin):
                 ) from exc
 
         predictions = np.asarray(model.predict(model_points), dtype=float).ravel()
+        settings = coded_points if coded else actual
+        result = settings.copy(deep=True)
+        result["Predicted"] = predictions
+
+        if df_resid <= 0 or not np.isfinite(ms_res) or ms_res < 0:
+            result["CI Lower"] = np.nan
+            result["CI Upper"] = np.nan
+            return result.copy(deep=True)
+
         covariance = np.asarray(fitted.dispersion_matrix, dtype=float)
         model_values = model_points.to_numpy(dtype=float)
         leverages = np.einsum(
@@ -187,9 +194,6 @@ class PredictionPointsMixin(_ExternalPointValidationMixin):
 
         critical = float(t.ppf(1.0 - alpha / 2.0, df_resid))
         half_width = critical * np.sqrt(ms_res * leverages)
-        settings = coded_points if coded else actual
-        result = settings.copy(deep=True)
-        result["Predicted"] = predictions
         result["CI Lower"] = predictions - half_width
         result["CI Upper"] = predictions + half_width
         return result.copy(deep=True)

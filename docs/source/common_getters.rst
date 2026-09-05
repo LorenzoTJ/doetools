@@ -380,7 +380,9 @@ These getters require points loaded with :meth:`load_prediction_points`.
 
 The result for one response includes every factor column followed by
 ``Predicted``, ``CI Lower``, and ``CI Upper``. Factor settings use actual units by
-default and coded values when ``coded=True``.
+default and coded values when ``coded=True``. If the fitted model has no valid
+residual mean square, point predictions are still returned and both confidence
+interval columns are ``NaN``.
 
 .. code-block:: python
 

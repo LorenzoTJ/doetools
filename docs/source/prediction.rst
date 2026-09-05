@@ -67,6 +67,10 @@ The result contains the factor-setting columns followed by ``Predicted``,
 ``CI Lower``, and ``CI Upper``. Setting ``coded=True`` changes only the displayed
 factor values; statistical results are identical.
 
+For saturated models, or other fits without a valid residual mean square, the
+point prediction remains available but ``CI Lower`` and ``CI Upper`` are
+``NaN`` because a confidence interval cannot be estimated.
+
 For a model row vector :math:`x_0`, the pointwise confidence interval for the
 expected mean response is
 
