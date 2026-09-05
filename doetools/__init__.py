@@ -1,6 +1,6 @@
 """Public package interface for :mod:`doetools`."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from .design import (
     BoxBehnkenDesign,
@@ -20,7 +20,6 @@ from .utils import (
     ContinuousFactor,
     MixtureFactor,
     ModelTerms,
-    simulate_responses,
     suggest_design,
 )
 
@@ -37,7 +36,6 @@ __all__ = [
     "ImportDesign",
     "MixtureFactor",
     "ModelTerms",
-    "simulate_responses",
     "PlackettBurmanDesign",
     "SimplexCentroidDesign",
     "SimplexLatticeDesign",

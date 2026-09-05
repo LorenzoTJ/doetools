@@ -79,7 +79,7 @@ Process-augmentation example
     }
     design = DOptAddDesign(
         factors=factors,
-        file_path="existing_data.xlsx",
+        source="existing_data.xlsx",
         responses=["Yield"],
     )
 
@@ -108,8 +108,11 @@ Process-augmentation example
     design.select_design(5)
     design.export_experiments(
         responses=["Yield"],
-        save_path="augmented_design.xlsx",
+        destination="augmented_design.xlsx",
     )
+
+``source`` can also be a pandas DataFrame. In either form, ``factors`` remains
+the first constructor parameter and the input data are copied defensively.
 
 Imported response values are retained for existing rows during export. Response
 cells for the selected new runs are initialized to zero.

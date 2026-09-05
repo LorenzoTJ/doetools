@@ -72,7 +72,7 @@ Export a design matrix to an Excel workbook for laboratory execution.
    design.export_experiments(
        responses=["Yield", "Purity", "Cost"],
        randomize=True,
-       save_path="experiment_plan.xlsx",
+       destination="experiment_plan.xlsx",
        coded=False  # Use actual factor units
    )
 

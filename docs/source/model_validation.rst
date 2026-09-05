@@ -41,9 +41,15 @@ coded values. Mixture components remain proportions regardless of this option.
 .. code-block:: python
 
    design.load_confirmation_runs(
-       file_path="confirmation_runs.xlsx",
+       source="confirmation_runs.xlsx",
        coded=False,
    )
+
+The same method accepts an in-memory DataFrame and copies it defensively:
+
+.. code-block:: python
+
+   design.load_confirmation_runs(source=confirmation_runs)
 
 The loader checks factor levels, numeric responses, continuous and mixture bounds,
 mixture sums, and configured domain filters. If validation fails, previously loaded
@@ -96,16 +102,18 @@ Confirmation Plots
 
 Plot grouped observed means against predictions or inspect confirmation residuals.
 
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_confirmation_exp_vs_pred
-
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_confirmation_residuals
+.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_confirmation
 
 **Example:**
 
 .. code-block:: python
 
-   prediction_figure = design.plot_confirmation_exp_vs_pred(response="Yield")
-   residual_figure = design.plot_confirmation_residuals(response="Yield")
+   prediction_figure = design.plot_confirmation(
+       response="Yield", view="observed_vs_predicted"
+   )
+   residual_figure = design.plot_confirmation(
+       response="Yield", view="residuals"
+   )
 
    prediction_figure.show()
    residual_figure.show()

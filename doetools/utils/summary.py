@@ -158,8 +158,8 @@ class DesignSummaryMixin:
         """Return a defensive copy of imported responses."""
         return self._require_dataframe("_responses", "responses").copy(deep=True)
 
-    def get_predicted_responses(self) -> pd.DataFrame:
-        """Return full-precision fitted predictions for every response."""
+    def get_fitted_values(self) -> pd.DataFrame:
+        """Return full-precision in-sample fitted values for every response."""
         responses = self._require_dataframe("_responses", "responses")
         names = list(responses.columns)
         predicted = pd.DataFrame(index=responses.index)

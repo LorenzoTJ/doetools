@@ -10,7 +10,7 @@ from typing import Literal
 
 
 @dataclass(frozen=True)
-class MixtureSurfaceDomain:
+class _MixtureSurfaceDomain:
     """Cartesian representation of a ternary mixture plotting domain."""
 
     mode: Literal["full", "allowed"]
@@ -28,7 +28,7 @@ class MixtureSurfaceDomain:
 
 
 @dataclass(frozen=True)
-class ProcessSurfaceDomain:
+class _ProcessSurfaceDomain:
     """Cartesian grid, mask, and boundary for a process surface."""
 
     mode: Literal["full", "allowed"]
@@ -41,11 +41,11 @@ class ProcessSurfaceDomain:
     has_area: bool
 
 
-class Renderer:
+class _RendererMixin:
     
     # USEFUL COMMON METHODS
     
-    def barycentric_to_cartesian_2D(self, W):
+    def _barycentric_to_cartesian_2d(self, W):
         
         """
         W: (N, 3) array, rows sum to 1
@@ -62,11 +62,11 @@ class Renderer:
         
         return complete_coord
     
-    def bary_to_xy(self, a, b, c, A, B, C):
+    def _bary_to_xy(self, a, b, c, A, B, C):
         P = a[..., None]*A + b[..., None]*B + c[..., None]*C
         return P[..., 0], P[..., 1]
 
-    def build_mixture_surface_domain(
+    def _build_mixture_surface_domain(
         self,
         grid_df_scaled: pd.DataFrame,
         a_title: str,
@@ -74,7 +74,7 @@ class Renderer:
         c_title: str,
         resolution: int = 250,
         mode: Literal["full", "allowed"] = "full",
-    ) -> MixtureSurfaceDomain:
+    ) -> _MixtureSurfaceDomain:
         """Build one shared Cartesian grid and domain mask for mixture plots."""
         if mode not in {"full", "allowed"}:
             raise ValueError("domain must be either 'full' or 'allowed'.")
@@ -82,7 +82,7 @@ class Renderer:
             raise ValueError("resolution must be at least 2.")
 
         mixture = grid_df_scaled[[a_title, b_title, c_title]].to_numpy(dtype=float)
-        xy = self.barycentric_to_cartesian_2D(mixture)[:, :2]
+        xy = self._barycentric_to_cartesian_2d(mixture)[:, :2]
         finite_points = xy[np.isfinite(xy).all(axis=1)]
         if len(finite_points) == 0:
             raise ValueError("The mixture plotting grid contains no finite points.")
@@ -134,7 +134,7 @@ class Renderer:
             mask = simplex_mask
             has_area = True
 
-        return MixtureSurfaceDomain(
+        return _MixtureSurfaceDomain(
             mode=mode,
             x=x,
             y=y,
@@ -150,8 +150,8 @@ class Renderer:
         )
 
     @staticmethod
-    def interpolate_mixture_surface(
-        domain: MixtureSurfaceDomain,
+    def _interpolate_mixture_surface(
+        domain: _MixtureSurfaceDomain,
         response_values: np.ndarray,
     ) -> np.ndarray:
         """Interpolate response values on a mixture domain and apply its mask."""
@@ -186,7 +186,7 @@ class Renderer:
 
         return np.where(domain.mask, interpolated, np.nan)
 
-    def build_process_surface_domain(
+    def _build_process_surface_domain(
         self,
         grid: pd.DataFrame,
         x_title: str,
@@ -195,7 +195,7 @@ class Renderer:
         filters: list | None = None,
         filter_grid: pd.DataFrame | None = None,
         fallback_points: pd.DataFrame | None = None,
-    ) -> ProcessSurfaceDomain:
+    ) -> _ProcessSurfaceDomain:
         """Build a process-grid mask and its continuous convex-hull boundary."""
         if mode not in {"full", "allowed"}:
             raise ValueError("domain must be either 'full' or 'allowed'.")
@@ -210,7 +210,7 @@ class Renderer:
         Y = grid[y_title].to_numpy(dtype=float).reshape(shape)
         full_mask = np.ones(shape, dtype=bool)
         if mode == "full":
-            return ProcessSurfaceDomain(
+            return _ProcessSurfaceDomain(
                 mode=mode,
                 X=X,
                 Y=Y,
@@ -300,7 +300,7 @@ class Renderer:
             x_range = self._exact_range(X)
             y_range = self._exact_range(Y)
 
-        return ProcessSurfaceDomain(
+        return _ProcessSurfaceDomain(
             mode=mode,
             X=X,
             Y=Y,
@@ -314,7 +314,7 @@ class Renderer:
     @staticmethod
     def _coerce_process_surface_values(
         values: np.ndarray,
-        domain: ProcessSurfaceDomain,
+        domain: _ProcessSurfaceDomain,
     ) -> np.ndarray:
         """Reshape process values and hide points outside the domain."""
         array = np.asarray(values, dtype=float)
@@ -329,13 +329,13 @@ class Renderer:
     def _coerce_mixture_surface_values(
         self,
         values: np.ndarray,
-        domain: MixtureSurfaceDomain,
+        domain: _MixtureSurfaceDomain,
     ) -> np.ndarray:
         array = np.asarray(values, dtype=float)
         if array.shape == domain.XI.shape:
             return np.where(domain.mask, array, np.nan)
         if array.size == domain.x.size:
-            return self.interpolate_mixture_surface(domain, array)
+            return self._interpolate_mixture_surface(domain, array)
         raise ValueError(
             "Mixture contour values must match either the source points or "
             "the interpolation grid."
@@ -397,7 +397,7 @@ class Renderer:
         arrays = [np.asarray(value, dtype=float).ravel() for value in values if value is not None]
         finite = np.concatenate(arrays) if arrays else np.array([], dtype=float)
         finite = finite[np.isfinite(finite)]
-        return Renderer._padded_range(finite, padding=padding)
+        return _RendererMixin._padded_range(finite, padding=padding)
 
     @staticmethod
     def _finite_extrema(values: np.ndarray) -> tuple[float, float]:
@@ -407,7 +407,7 @@ class Renderer:
             return np.nan, np.nan
         return float(finite.min()), float(finite.max())
 
-    def add_vertex_annotations(self, fig, A, B, C, texts, font_size=12):
+    def _add_vertex_annotations(self, fig, A, B, C, texts, font_size=12):
         
         pts = [(A, texts[0], -25, 0), (B, texts[1], 25, 0), (C, texts[2], 0, 15)]
         for (P, t, xshift, yshift) in pts:
@@ -420,7 +420,7 @@ class Renderer:
                 yshift=yshift
             )
     
-    def add_axis_titles(self, fig, A, B, C, a_title, b_title, c_title, font_size=13):
+    def _add_axis_titles(self, fig, A, B, C, a_title, b_title, c_title, font_size=13):
         
         mid_BC = 0.5*(B + C)
         mid_AC = 0.5*(A + C)
@@ -433,7 +433,7 @@ class Renderer:
         fig.add_annotation(x=mid_AB[0], y=mid_AB[1] - 0.06, text=f"<b>{c_title}</b>", showarrow=False,
                         font=dict(size=font_size, family="Arial"))
         
-    def add_axis_titles_3d(
+    def _add_axis_titles_3d(
             self,
             fig,
             A, B, C,
@@ -471,7 +471,7 @@ class Renderer:
     
     # COUNTOUR AND SURFACE PLOTTING METHODS
     
-    def render_contour_process(self,
+    def _render_contour_process(self,
                                grid : pd.DataFrame,
                                x_title : str,
                                y_title : str,
@@ -483,7 +483,7 @@ class Renderer:
                                z2_title : str = None,
                                second_response : np.ndarray = None,
                                feasible_region : np.ndarray = None,
-                               process_surface_domain: ProcessSurfaceDomain = None,
+                               process_surface_domain: _ProcessSurfaceDomain = None,
                                ) -> go.Figure:
         
         # 1) Create the plotly figure
@@ -680,7 +680,7 @@ class Renderer:
         
         return fig
     
-    def render_surface_process(self,
+    def _render_surface_process(self,
                                grid : pd.DataFrame,
                                x_title : str,
                                y_title : str,
@@ -692,7 +692,7 @@ class Renderer:
                                feasible_region : bool = False,
                                z2_title : str = None,
                                second_response : np.ndarray = None,
-                               process_surface_domain: ProcessSurfaceDomain = None,
+                               process_surface_domain: _ProcessSurfaceDomain = None,
                                ) -> go.Figure:
         
         # 1) Create the plotly figure
@@ -938,7 +938,7 @@ class Renderer:
         
         return fig   
     
-    def add_ternary_grid_2d(
+    def _add_ternary_grid_2d(
         self,
         fig,
         A, B, C,
@@ -974,7 +974,7 @@ class Renderer:
             c = (1 - v) * (1 - ts)
             a = np.full_like(ts, v)
 
-            x, y = self.bary_to_xy(a, b, c, A, B, C)
+            x, y = self._bary_to_xy(a, b, c, A, B, C)
 
             fig.add_trace(go.Scatter(
                 x=x, y=y,
@@ -999,7 +999,7 @@ class Renderer:
             c = (1 - v) * (1 - ts)
             b = np.full_like(ts, v)
 
-            x, y = self.bary_to_xy(a, b, c, A, B, C)
+            x, y = self._bary_to_xy(a, b, c, A, B, C)
 
             fig.add_trace(go.Scatter(
                 x=x, y=y,
@@ -1023,7 +1023,7 @@ class Renderer:
             b = (1 - v) * (1 - ts)
             c = np.full_like(ts, v)
 
-            x, y = self.bary_to_xy(a, b, c, A, B, C)
+            x, y = self._bary_to_xy(a, b, c, A, B, C)
 
             fig.add_trace(go.Scatter(
                 x=x, y=y,
@@ -1048,7 +1048,7 @@ class Renderer:
             hoverinfo="skip"
         ))
         
-    def add_ternary_grid_3d(
+    def _add_ternary_grid_3d(
         self,
         fig,
         A, B, C,
@@ -1084,7 +1084,7 @@ class Renderer:
             c = (1 - v) * (1 - ts)
             a = np.full_like(ts, v)
 
-            x, y = self.bary_to_xy(a, b, c, A, B, C)
+            x, y = self._bary_to_xy(a, b, c, A, B, C)
             z = np.full_like(x, z0)
 
             fig.add_trace(go.Scatter3d(
@@ -1109,7 +1109,7 @@ class Renderer:
             c = (1 - v) * (1 - ts)
             b = np.full_like(ts, v)
 
-            x, y = self.bary_to_xy(a, b, c, A, B, C)
+            x, y = self._bary_to_xy(a, b, c, A, B, C)
             z = np.full_like(x, z0)
 
             fig.add_trace(go.Scatter3d(
@@ -1134,7 +1134,7 @@ class Renderer:
             b = (1 - v) * (1 - ts)
             c = np.full_like(ts, v)
 
-            x, y = self.bary_to_xy(a, b, c, A, B, C)
+            x, y = self._bary_to_xy(a, b, c, A, B, C)
             z = np.full_like(x, z0)
 
             fig.add_trace(go.Scatter3d(
@@ -1161,7 +1161,7 @@ class Renderer:
             hoverinfo="skip"
         ))
     
-    def render_contour_mixture(
+    def _render_contour_mixture(
         self,
         grid_df_scaled : pd.DataFrame,
         grid_df: pd.DataFrame,
@@ -1184,7 +1184,7 @@ class Renderer:
         z2_title: str = None,
         resolution: int = 250,
         domain: Literal["full", "allowed"] = "full",
-        surface_domain: MixtureSurfaceDomain = None,
+        surface_domain: _MixtureSurfaceDomain = None,
         ) -> go.Figure:
         if domain not in {"full", "allowed"}:
             raise ValueError("domain must be either 'full' or 'allowed'.")
@@ -1194,7 +1194,7 @@ class Renderer:
         B = np.array([1.0, 0.0])
         C = np.array([0.5, rt3/2.0])
 
-        domain = surface_domain or self.build_mixture_surface_domain(
+        domain = surface_domain or self._build_mixture_surface_domain(
             grid_df_scaled=grid_df_scaled,
             a_title=a_title,
             b_title=b_title,
@@ -1217,7 +1217,7 @@ class Renderer:
         fig = go.Figure()
 
         if domain.mode == "full" and show_grid:
-            self.add_ternary_grid_2d(fig, A, B, C, step=grid_step, min=min, max=max)
+            self._add_ternary_grid_2d(fig, A, B, C, step=grid_step, min=min, max=max)
 
         fig.add_trace(go.Contour(
             z=response_grid, x=domain.xi, y=domain.yi,
@@ -1290,9 +1290,9 @@ class Renderer:
             ))
 
         if domain.mode == "full":
-            self.add_axis_titles(fig, A, B, C, a_title, b_title, c_title)
+            self._add_axis_titles(fig, A, B, C, a_title, b_title, c_title)
             if vertex_texts is not None:
-                self.add_vertex_annotations(fig, A, B, C, vertex_texts)
+                self._add_vertex_annotations(fig, A, B, C, vertex_texts)
             
         fig.add_annotation(
             text=f"<b>Contour Plot - {z_title}</b>",
@@ -1354,7 +1354,7 @@ class Renderer:
         )
         return fig
             
-    def render_surface_mixture(
+    def _render_surface_mixture(
         self,
         grid_df_scaled: pd.DataFrame,
         grid_df: pd.DataFrame,
@@ -1374,7 +1374,7 @@ class Renderer:
         show_border: bool = True,
         center_xy: bool = True,
         domain: Literal["full", "allowed"] = "full",
-        surface_domain: MixtureSurfaceDomain = None,
+        surface_domain: _MixtureSurfaceDomain = None,
     ):
         if domain not in {"full", "allowed"}:
             raise ValueError("domain must be either 'full' or 'allowed'.")
@@ -1384,7 +1384,7 @@ class Renderer:
         B = np.array([1.0, 0.0])
         C = np.array([0.5, rt3 / 2.0])
 
-        domain = surface_domain or self.build_mixture_surface_domain(
+        domain = surface_domain or self._build_mixture_surface_domain(
             grid_df_scaled=grid_df_scaled,
             a_title=a_title,
             b_title=b_title,
@@ -1531,7 +1531,7 @@ class Renderer:
         )
         z_min = float(combined_z.min()) if combined_z.size else z_range[0]
         if domain.mode == "full":
-            self.add_ternary_grid_3d(
+            self._add_ternary_grid_3d(
                 fig, A2, B2, C2, z0=z_min, min=min, max=max, step=0.1
             )
 
@@ -1572,7 +1572,7 @@ class Renderer:
             ))
 
         if domain.mode == "full":
-            self.add_axis_titles_3d(
+            self._add_axis_titles_3d(
                 fig, A2, B2, C2, a_title, b_title, c_title, z0=z_min
             )
 
@@ -1644,7 +1644,7 @@ class Renderer:
         return fig
     
 
-    def regression_coefficients(self) -> go.Figure:
+    def _regression_coefficients(self) -> go.Figure:
         """
         Create a bar chart of regression coefficients with significance markers.
         
@@ -1939,7 +1939,7 @@ class Renderer:
 
         return fig
     
-    def model_diagnostics(self, cv: bool = False) -> go.Figure:
+    def _model_diagnostics(self, cv: bool = False) -> go.Figure:
         """
         Create comprehensive model diagnostic plots in a 2x2 subplot layout.
         
@@ -2295,7 +2295,7 @@ class Renderer:
         
         return fig
 
-    def exp_vs_pred(self, cv : bool = False) -> go.Figure:
+    def _exp_vs_pred(self, cv : bool = False) -> go.Figure:
 
             if self._mlr_wrapper is None:
                 raise ValueError("No OLS model has been computed, please call 'mlr_model_computation' first")
@@ -2395,592 +2395,6 @@ class Renderer:
 
             return fig
     
-    def interactions(self, 
-                            response: str,
-                            coded : bool = True
-                            ) -> go.Figure:
-        
-        # ---- data pick ----
-        if coded:
-            X = self._coded_design_matrix.copy()
-        else:  
-            X = self._design_matrix.copy()
-
-        if hasattr(self, "_responses") and isinstance(self._responses, pd.DataFrame) and response in self._responses.columns:
-            Y = self._responses[[response]].copy()
-        else:
-            raise ValueError(f"Response '{response}' not found.")
-
-        df = pd.concat([X.reset_index(drop=True), Y.reset_index(drop=True)], axis=1)
-
-        fig = go.Figure()
-        vars_ = list(self._factors.keys())
-        comb = list(combinations(vars_, 2))
-
-        # Precompute numeric y once
-        y = pd.to_numeric(df[response], errors="coerce")
-        base = df.assign(y=y).dropna(subset=["y"])
-        
-        # Calculate grand mean for reference line
-        grand_mean = base["y"].mean()
-
-        combo_traces: list[list[int]] = []
-        raw_data_trace_ids = []
-
-        # ----------------------------------------
-        # Colorblind-friendly palette
-        palette = [
-            "#05BCB3",
-            "#003153",  
-            "#4682B4",
-            "#EE6C4D",  
-            "#ff006a",  
-            "#ffa600", 
-        ]
-        # ----------------------------------------
-
-        # ---- build traces for each interaction ----
-        for A, B in comb:
-            # Calculate means for line traces
-            g = base.groupby([A, B], dropna=False)["y"]
-            summ = g.agg(mean="mean").reset_index()
-            
-            # Get raw data grouped by B levels
-            levels = base[B].unique()
-            current_combo_trace_ids = []
-
-            for k, lev in enumerate(levels):
-                df_sub = base[base[B] == lev].copy()
-                df_mean = summ[summ[B] == lev].sort_values(A)
-                
-                # Round level for display
-                lev_rounded = round(lev, 3) if isinstance(lev, (int, float)) else lev
-                
-                # Add scatter points colored by level
-                fig.add_trace(
-                    go.Scatter(
-                        x=df_sub[A],
-                        y=df_sub["y"],
-                        mode="markers",
-                        name=f"{B}={lev_rounded}",
-                        marker=dict(
-                            size=8, 
-                            color=palette[k % len(palette)],
-                            opacity=0.7,
-                            line=dict(width=1, color="white")
-                        ),
-                        hovertemplate=(
-                            f"{A}: %{{x}}<br>"
-                            f"{B}: {lev_rounded}<br>"
-                            f"{response}: %{{y:.3f}}<br>"
-                            "<extra></extra>"
-                        ),
-                        visible=False,
-                        showlegend=True,
-                    )
-                )
-                current_combo_trace_ids.append(len(fig.data) - 1)
-                
-                # Add line connecting means with markers
-                fig.add_trace(
-                    go.Scatter(
-                        x=df_mean[A],
-                        y=df_mean["mean"],
-                        mode="lines+markers",
-                        line=dict(
-                            width=2.5, 
-                            color=palette[k % len(palette)],
-                            dash="solid"
-                        ),
-                        marker=dict(
-                            size=12,
-                            color=palette[k % len(palette)],
-                            symbol="diamond",
-                            line=dict(width=2, color="white")
-                        ),
-                        hovertemplate=(
-                            f"{A}: %{{x}}<br>"
-                            f"{B}: {lev_rounded}<br>"
-                            f"Mean {response}: %{{y:.3f}}<br>"
-                            "<extra></extra>"
-                        ),
-                        visible=False,
-                        showlegend=False,
-                    )
-                )
-                current_combo_trace_ids.append(len(fig.data) - 1)
-
-            combo_traces.append(current_combo_trace_ids)
-            raw_data_trace_ids.append(None)  # Placeholder for compatibility
-
-        # ---- initial visibility: show first combo only ----
-        n_traces = len(fig.data)
-        visible_init = [False] * n_traces
-        for idx in combo_traces[0]:
-            visible_init[idx] = True
-
-        # ---- build dropdown buttons ----
-        buttons = []
-        for i, (A, B) in enumerate(comb):
-            vis = [False] * n_traces
-            for idx in combo_traces[i]:
-                vis[idx] = True
-
-            buttons.append(
-                dict(
-                    label=f"{A} × {B}",
-                    method="update",
-                    args=[
-                        {"visible": vis},
-                        {
-                            "title.text": f"<b>Interaction: ({A}) × ({B})</b>",
-                            "xaxis.title.text": A,
-                            "yaxis.title.text": response,
-                            "annotations[0].text": f"Grand Mean: {grand_mean:.3f}",
-                        },
-                    ],
-                )
-            )
-
-        # ---- final layout ----
-        fig.update_layout(
-            title=dict(text=f"<b>Interaction: ({comb[0][0]}) × ({comb[0][1]})</b>",
-                                        x=0.45, y=0.93, xanchor="center", yanchor="top",
-                                        font=dict(size=20, color="black", family="Arial")),
-            xaxis_title=comb[0][0],
-            yaxis_title=response,
-            width=800,
-            height=500,
-            paper_bgcolor="white",
-            plot_bgcolor="white",
-            updatemenus=[
-                dict(
-                    buttons=buttons,
-                    direction="down",
-                    showactive=True,
-                    x=-0.01,
-                    xanchor="left",
-                    y=1.21,
-                    yanchor="top",
-                    bgcolor="white",
-                    bordercolor="black",
-                    borderwidth=1,
-                    pad=dict(r=10, t=10)
-                )
-            ],
-            legend=dict(
-                x=1.03,
-                y=1,
-                xanchor="left",
-                yanchor="top",
-                bgcolor="rgba(255,255,255,0.9)",
-                bordercolor="black",
-                borderwidth=1
-            ),
-            annotations=[
-                dict(
-                    text=f"Grand Mean: {grand_mean:.3f}",
-                    xref="paper", yref="paper",
-                    x=0.98, y=0.02,
-                    xanchor="right", yanchor="bottom",
-                    showarrow=False,
-                    font=dict(size=11, family="Arial", color="#666"),
-                    bgcolor="white",
-                    bordercolor="gray",
-                    borderwidth=1,
-                    borderpad=4
-                )
-            ],
-            margin=dict(l=60, r=150, t=80, b=60),
-            hovermode="closest",
-            hoverlabel=dict(
-                bgcolor="white",
-                bordercolor="#003153",
-                font=dict(size=11, family="Arial", color="black")
-            )
-        )
-        
-        # Add grand mean horizontal reference line
-        fig.add_hline(
-            y=grand_mean, 
-            line_dash="dash", 
-            line_color="gray",
-            line_width=1.5,
-            opacity=0.7
-        )
-        
-        # Add vertical line at x=0
-        fig.add_vline(
-            x=0, 
-            line_dash="solid", 
-            line_color="lightgray",
-            line_width=1,
-            opacity=0.6
-        )
-        
-        fig.update_xaxes(
-            showline=True,
-            linewidth=2,
-            linecolor="black",
-            mirror=True,
-            showgrid=True,
-            gridcolor="lightgray",
-            gridwidth=1,
-            zeroline=False
-        )
-        fig.update_yaxes(
-            showline=True,
-            linewidth=2,
-            linecolor="black",
-            mirror=True,
-            showgrid=True,
-            gridcolor="lightgray",
-            gridwidth=1
-        )
-        
-        # apply initial visibility
-        for i, vis in enumerate(visible_init):
-            fig.data[i].visible = vis
-
-        return fig
-
-    def residuals(self, cv : bool = False):
-
-            if self._mlr_wrapper is None:
-                raise ValueError("No OLS model has been computed, please call 'mlr_model_computation' first")
-
-
-            # Build a figure with one scatter trace per response
-            fig          = go.Figure()
-            buttons      = []
-            k = len(self._responses)
-            
-            # Add one scatter trace per response
-            for idx, var in enumerate(self._response_list):
-                exp  = self._responses[var].copy()
-                if cv:
-                    pred = self._mlr_wrapper.results[var].y_hat_cv
-                else:
-                    pred = self._mlr_wrapper.results[var].y_hat
-
-                res = pred - exp
-
-                fig.add_trace(
-                    go.Scatter(
-                        x              = list(range(k)),
-                        y              = res,
-                        mode           = "markers+text",
-                        marker=dict(color="#003153", size=8),
-                        text           = [str(i) for i in range(k)],
-                        textposition   = "top right",
-                        hovertemplate  = (
-                            "Residual: %{y:.2f}<br>"
-                            "Exp.: %{text}<extra></extra>"
-                        ),
-                        showlegend     = False,
-                        visible        = (idx == 0)
-                    )
-                )
-
-            # ── Add a single 45-degree “ideal” line (always visible) ─
-            fig.add_trace(
-                go.Scatter(
-                    x            = [-1, k],
-                    y            = [0, 0],
-                    mode         = "lines",
-                    line         = dict(color="#EE6C4D", dash="dash"),
-                    showlegend   = False,
-                    visible      = True
-                )
-            )
-
-            # ── Build the dropdown menu ───────────────────────────────
-            n_resp = len(self._response_list)
-            for i, var in enumerate(self._response_list):
-                # Visibility array: one slot per trace (responses + ideal line)
-                vis = [False]*n_resp + [True]
-                vis[i] = True
-
-                buttons.append(
-                    dict(
-                        label  = var,
-                        method = "update",
-                        args   = [
-                            {"visible": vis},
-                            {"xaxis.title.text": "Sample Number",
-                            "yaxis.title.text": f"Residuals in Fitting ({var})"}
-                        ]
-                    )
-                )
-
-            fig.update_xaxes(
-            showline=True,
-            linewidth=2,
-            linecolor="black",
-            mirror=True
-            )
-            fig.update_yaxes(
-                showline=True,
-                linewidth=2,
-                linecolor="black",
-                mirror=True
-            )
-            if cv:
-                title_text = "<b>Residuals in Fitting CV<b>"
-            else:
-                title_text = "<b>Residuals in Fitting<b>"
-                
-            fig.update_layout(
-                title=dict(text=title_text,
-                                        x=0.5, y=0.91, xanchor="center", yanchor="top",
-                                        font=dict(size=26, color="black", family="Arial")),
-                xaxis_title     = "Sample Number",
-                yaxis_title     = f"Residuals in Fitting ({self._response_list[0]})",
-                width           = 800,
-                height          = 600,
-                font            = dict(size=14),
-                updatemenus     = [dict(
-                    buttons     = buttons,
-                    direction   = "down",
-                    showactive  = True,
-                    x           = 0.0,
-                    xanchor     = "left",
-                    y           = 1.14,
-                    yanchor     = "top",
-                    pad         = dict(r=10, t=10)
-                )],
-                margin          = dict(t=100),
-                plot_bgcolor="white"
-            )
-
-            return fig
-
-    def main_effects(
-            self,
-            response: str,
-            coded : bool = True,
-            ncols: int = 3
-            ):
-            """
-            Plot main effects showing the mean response for each level of each factor.
-            
-            A main effects plot displays the mean response value for each level of a 
-            factor while averaging across all other factors. This shows the average 
-            effect of changing a factor across all experimental conditions.
-            
-            Parameters:
-            response : str
-                Name of the response variable
-            coded : bool
-                If True, plot in coded units. If False, plot in actual units.
-            ncols : int
-                Number of columns in subplot grid
-            """
- 
-            X = self._coded_design_matrix.copy()
-
-            if hasattr(self, "_responses") and isinstance(self._responses, pd.DataFrame) and response in self._responses.columns:
-                y_df = self._responses[[response]].copy()
-            else:
-                raise ValueError(f"Response '{response}' not found in self._responses.")
-
-            # Align rows and build working dataframe
-            df = pd.concat([X.reset_index(drop=True), y_df.reset_index(drop=True)], axis=1)
-
-            # Calculate y range and grand mean
-            y = pd.to_numeric(df[response], errors="coerce").to_numpy()
-            ypad = 0.05 * (y.max() - y.min() if y.max() > y.min() else 1.0)
-            shared_yrange = [float(y.min() - ypad), float(y.max() + ypad)]
-            grand_mean = float(np.mean(y))
-
-            # Build the subplot grid
-            factors = list(X.columns)
-            k = len(factors)
-            nrows = int(np.ceil(k / ncols))
-            fig = make_subplots(rows=nrows, cols=ncols, horizontal_spacing=0.08, vertical_spacing=0.12)
-
-            # Colorblind-friendly palette
-            palette = [
-                "#05BCB3",
-                "#003153",  
-                "#4682B4",
-                "#EE6C4D",  
-                "#ff006a",  
-                "#ffa600", 
-            ]
-
-            # Build each panel
-            for i, f in enumerate(factors):
-                r = i // ncols + 1  # row of the plot
-                c = i % ncols + 1   # column of the plot
-                
-                # Get unique levels for this factor
-                levels = np.sort(np.unique(np.array(X[f].iloc[0:])))
-                tol = 1e-8
-                # Filter levels within -1 and 1 (to avoid plotting extreme coded levels)
-                filt_lvls = [lev for lev in levels if (lev >= (-1 - tol)) and (lev <= (1 + tol))]
-                
-                # Calculate mean response at each level
-                rows = []
-                for lvl in filt_lvls:
-                    yy = df[df[f] == lvl][response]
-                    if yy.size == 0:
-                        mean = np.nan
-                    else:
-                        mean = float(np.mean(yy))
-                    rows.append((str(lvl), mean))
-                summ = pd.DataFrame(rows, columns=[f, "mean"])
-
-                # Prepare x-axis values (decode if needed)
-                x_vals = filt_lvls
-                if not coded:
-                    if self._factors[f].type == "cat":
-                        code = {}
-                        n_levels = len(self._factors[f].levels)
-                        for idx_level in range(n_levels):
-                            code[self._factors[f].coded_levels[idx_level]] = self._factors[f].levels[idx_level]
-                        x_vals = [code[float(lv)] for lv in x_vals]
-                    else:
-                        lb = self._factors[f].lower_bound
-                        ub = self._factors[f].upper_bound
-                        span = ub - lb
-                        cp = (lb + ub) / 2
-                        x_vals = [cp + (lv * span / 2) for lv in x_vals]
-
-                # Add raw data points for each level
-                for idx, (lvl, x_val) in enumerate(zip(filt_lvls, x_vals)):
-                    subset = df[df[f] == lvl]
-                    y_vals = subset[response].values
-                    
-                    # Round level for display
-                    level_display = round(lvl, 3) if coded else x_val
-                    
-                    color = palette[idx % len(palette)]
-                    
-                    fig.add_trace(
-                        go.Scatter(
-                            x=[x_val] * len(y_vals),
-                            y=y_vals,
-                            mode="markers",
-                            marker=dict(
-                                color=color,
-                                size=8,
-                                opacity=0.7,
-                                line=dict(width=0.5, color="white")
-                            ),
-                            name=f"{f}={level_display}",
-                            showlegend=False,
-                            hovertemplate=(
-                                f"<b>{f}={level_display}</b><br>"
-                                f"{response}: %{{y:.3f}}<br>"
-                                "<extra></extra>"
-                            )
-                        ),
-                        row=r, col=c
-                    )
-
-                # Add mean line with diamond markers
-                fig.add_trace(
-                    go.Scatter(
-                        x=x_vals, 
-                        y=summ["mean"], 
-                        mode="lines+markers",
-                        name=f, 
-                        showlegend=False, 
-                        line=dict(color="#003153", width=2.5), 
-                        marker=dict(
-                            color="#003153", 
-                            size=12,
-                            symbol="diamond",
-                            line=dict(width=2, color="white")
-                        ),
-                        hovertemplate=(
-                            f"<b>{f}: %{{x}}</b><br>"
-                            "Mean: %{y:.3f}<br>"
-                            "<extra></extra>"
-                        )
-                    ),
-                    row=r, col=c
-                )
-                
-                # Add grand mean reference line
-                fig.add_hline(
-                    y=grand_mean, 
-                    line=dict(dash="dash", width=1.5, color="gray"), 
-                    opacity=0.7,
-                    row=r, col=c
-                )
-                
-                # Add zero level reference line (center point)
-                if coded:
-                    fig.add_vline(
-                        x=0,
-                        line=dict(dash="solid", width=1, color="lightgray"),
-                        opacity=0.6,
-                        row=r, col=c
-                    )
-                elif self._factors[f].type != "cat":
-                    center_val = (self._factors[f].lower_bound + self._factors[f].upper_bound) / 2
-                    fig.add_vline(
-                        x=center_val,
-                        line=dict(dash="solid", width=1, color="lightgray"),
-                        opacity=0.6,
-                        row=r, col=c
-                    )
-
-                # Update axes for this subplot
-                fig.update_xaxes(title_text=f"<b>{f}</b>", row=r, col=c)
-                fig.update_yaxes(
-                    title_text=f"<b>{response}</b>" if c == 1 else None, 
-                    range=shared_yrange, 
-                    row=r, col=c
-                )
-
-            # Global axis styling
-            fig.update_xaxes(
-                showline=True,
-                linewidth=2,
-                linecolor="black",
-                mirror=True,
-                showgrid=True,
-                gridcolor="lightgray"
-            )
-            fig.update_yaxes(
-                showline=True,
-                linewidth=2,
-                linecolor="black",
-                mirror=True,
-                showgrid=True,
-                gridcolor="lightgray"
-            )
-            
-            # Layout
-            fig.update_layout(
-                height=360 * nrows,
-                width=360 * ncols,
-                title=dict(
-                    text=f"<b>Main Effects - {response}</b>",
-                    x=0.52,
-                    y=0.93 ,
-                    xanchor="center",
-                    yanchor="top",
-                    font=dict(size=20, family="Arial", color="black")
-                ),
-                margin=dict(l=60, r=20, t=80, b=40),
-                paper_bgcolor="white",
-                plot_bgcolor="white",
-                font=dict(size=11, family="Arial"),
-                hovermode="closest",
-                hoverlabel=dict(
-                    bgcolor="white",
-                    bordercolor="#003153",
-                    font=dict(size=11, family="Arial", color="black")
-                )
-            )
-            return fig
-
-    # MODEL DIAGNOSTICS AND MODEL-BASED EFFECTS
-
     def _validate_plot_response(self, response: str) -> None:
         if self._mlr_wrapper is None:
             raise ValueError(
@@ -3094,7 +2508,7 @@ class Renderer:
         )
         return fig
 
-    def regression_coefficients_for_response(self, response: str) -> go.Figure:
+    def _regression_coefficients_for_response(self, response: str) -> go.Figure:
         """Render regression coefficients for one response."""
         self._validate_plot_response(response)
         coef_df = self._mlr_wrapper.results[response].coef.copy()
@@ -3196,7 +2610,7 @@ class Renderer:
         )
         return fig
 
-    def exp_vs_pred_for_response(
+    def _exp_vs_pred_for_response(
         self,
         response: str,
         cv: bool = False,
@@ -3247,7 +2661,7 @@ class Renderer:
         fig.update_yaxes(range=[lower, upper], scaleanchor="x", scaleratio=1)
         return fig
 
-    def confirmation_exp_vs_pred_for_response(
+    def _confirmation_exp_vs_pred_for_response(
         self,
         response: str,
     ) -> go.Figure:
@@ -3303,7 +2717,7 @@ class Renderer:
         fig.update_yaxes(range=[lower, upper], scaleanchor="x", scaleratio=1)
         return fig
 
-    def confirmation_residuals_for_response(
+    def _confirmation_residuals_for_response(
         self,
         response: str,
     ) -> go.Figure:
@@ -3351,7 +2765,7 @@ class Renderer:
             y_title="Residuals",
         )
 
-    def residuals_vs_fitted_for_response(
+    def _residuals_vs_fitted_for_response(
         self,
         response: str,
         cv: bool = False,
@@ -3393,7 +2807,7 @@ class Renderer:
             y_title="Residuals",
         )
 
-    def residuals_by_run_for_response(
+    def _residuals_by_run_for_response(
         self,
         response: str,
         cv: bool = False,
@@ -3440,7 +2854,7 @@ class Renderer:
             y_title=f"Residuals ({response})",
         )
 
-    def qq_residuals_for_response(
+    def _qq_residuals_for_response(
         self,
         response: str,
         cv: bool = False,
@@ -3485,7 +2899,7 @@ class Renderer:
             y_title="Residual Quantiles",
         )
 
-    def residuals_histogram_for_response(
+    def _residuals_histogram_for_response(
         self,
         response: str,
         cv: bool = False,
@@ -3521,17 +2935,17 @@ class Renderer:
             y_title="Frequency",
         )
 
-    def model_diagnostics_for_response(
+    def _model_diagnostics_for_response(
         self,
         response: str,
         cv: bool = False,
     ) -> go.Figure:
         """Render the four standard diagnostics for one response."""
         figures = (
-            self.exp_vs_pred_for_response(response, cv),
-            self.residuals_vs_fitted_for_response(response, cv),
-            self.qq_residuals_for_response(response, cv),
-            self.residuals_histogram_for_response(response, cv),
+            self._exp_vs_pred_for_response(response, cv),
+            self._residuals_vs_fitted_for_response(response, cv),
+            self._qq_residuals_for_response(response, cv),
+            self._residuals_histogram_for_response(response, cv),
         )
         fig = make_subplots(
             rows=2,
@@ -3599,7 +3013,7 @@ class Renderer:
         )
         return fig
 
-    def residuals_dashboard(
+    def _residuals_dashboard(
         self,
         response: str | None = None,
         cv: bool = False,
@@ -3613,7 +3027,7 @@ class Renderer:
             raise ValueError("No responses are available for plotting.")
 
         figures = [
-            self.residuals_by_run_for_response(item, cv, x_axis)
+            self._residuals_by_run_for_response(item, cv, x_axis)
             for item in responses
         ]
         if response is not None:
@@ -3745,13 +3159,13 @@ class Renderer:
         base = self._base_prediction_row()
         grid = pd.DataFrame([base] * len(coded_values))
         grid[factor] = coded_values
-        predictions = self.predict(grid, [response])[response].to_numpy()
+        predictions = self._predict(grid, [response])[response].to_numpy()
         display_values = self._effect_display_values(
             factor, coded_values, coded
         )
         return display_values, predictions
 
-    def main_effect_model(
+    def _main_effect_model(
         self,
         response: str,
         factor: str,
@@ -3779,7 +3193,7 @@ class Renderer:
         )
         baseline = self._base_prediction_row()
         baseline_prediction = float(
-            self.predict(pd.DataFrame([baseline]), [response]).iloc[0][response]
+            self._predict(pd.DataFrame([baseline]), [response]).iloc[0][response]
         )
         fig.add_hline(
             y=baseline_prediction,
@@ -3794,7 +3208,7 @@ class Renderer:
             y_title=f"Predicted {response}",
         )
 
-    def main_effects_model(
+    def _main_effects_model(
         self,
         response: str,
         coded: bool = True,
@@ -3930,7 +3344,7 @@ class Renderer:
             grid = pd.DataFrame([base] * len(x_codes))
             grid[factor1] = x_codes
             grid[factor2] = group_code
-            predictions = self.predict(
+            predictions = self._predict(
                 grid, [response]
             )[response].to_numpy()
             profiles.append(
@@ -3938,7 +3352,7 @@ class Renderer:
             )
         return factor1, profiles
 
-    def interaction_model(
+    def _interaction_model(
         self,
         response: str,
         factor1: str,
@@ -3985,7 +3399,7 @@ class Renderer:
         )
         return fig
 
-    def interactions_model(
+    def _interactions_model(
         self,
         response: str,
         coded: bool = True,
@@ -4091,7 +3505,7 @@ class Renderer:
         )
         return fig
 
-    def mixture_trace_model(
+    def _mixture_trace_model(
         self,
         response: str,
         reference: Literal["centroid"] = "centroid",
@@ -4166,7 +3580,7 @@ class Renderer:
                 row.update(dict(zip(mixture_names, mixture)))
                 rows.append(row)
 
-            predictions = self.predict(
+            predictions = self._predict(
                 pd.DataFrame(rows), [response]
             )[response].to_numpy()
             fig.add_trace(
@@ -4190,7 +3604,7 @@ class Renderer:
             )
 
         reference_prediction = float(
-            self.predict(pd.DataFrame([base]), [response]).iloc[0][response]
+            self._predict(pd.DataFrame([base]), [response]).iloc[0][response]
         )
         fig.add_hline(
             y=reference_prediction,

@@ -1,12 +1,12 @@
 from typing import Literal
 from doetools.graphs.design_plot_builder import DesignPlotOptions, build_design_plot
-from doetools.graphs.renderers import Renderer
-from .data_builder import DataBuilder
+from doetools.graphs.renderers import _RendererMixin
+from .data_builder import _PlotDataMixin
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 
-class GraphsMixin(Renderer, DataBuilder):
+class GraphsMixin(_RendererMixin, _PlotDataMixin):
     
     def plot_design(self, 
                     ax1 : str,
@@ -111,7 +111,7 @@ class GraphsMixin(Renderer, DataBuilder):
         if fallback_points is None or len(fallback_points) == 0:
             fallback_points = getattr(self, design_attr, None)
 
-        return self.build_process_surface_domain(
+        return self._build_process_surface_domain(
             grid=grid_df,
             x_title=ax1,
             y_title=ax2,
@@ -202,7 +202,7 @@ class GraphsMixin(Renderer, DataBuilder):
                 domain,
             )
             labels = list(grid_df.columns)
-            hovertemplate = self.build_hovertemplate(labels, ["Leverage"], precision=3)
+            hovertemplate = self._build_hovertemplate(labels, ["Leverage"], precision=3)
             customdata = grid_df.copy()
             customdata['Leverage'] = leverage
             customdata = customdata.to_numpy()
@@ -211,7 +211,7 @@ class GraphsMixin(Renderer, DataBuilder):
             for name in coded_constant_levels.keys():
                 constant_levels[name] = grid_df[name].iloc[0]
                 
-            fig_cp = self.render_contour_process(                               
+            fig_cp = self._render_contour_process(
                                grid = grid_df,
                                x_title = ax1,
                                y_title = ax2,
@@ -222,7 +222,7 @@ class GraphsMixin(Renderer, DataBuilder):
                                customdata = customdata,
                                process_surface_domain=process_surface_domain)
             
-            fig_surf = self.render_surface_process(
+            fig_surf = self._render_surface_process(
                                grid = grid_df,
                                x_title = ax1,
                                y_title = ax2,
@@ -250,21 +250,21 @@ class GraphsMixin(Renderer, DataBuilder):
             for name in coded_constant_levels.keys():
                 constant_levels[name] = grid_df[name].iloc[0]
             # Scale the grid for mixture plotting
-            grid_df_scaled = self.mixture_scaler(grid_df, constant_levels)
-            surface_domain = self.build_mixture_surface_domain(
+            grid_df_scaled = self._scale_mixture(grid_df, constant_levels)
+            surface_domain = self._build_mixture_surface_domain(
                 grid_df_scaled=grid_df_scaled,
                 a_title=ax1,
                 b_title=ax2,
                 c_title=ax3,
                 mode=domain,
             )
-            interp_leverage = self.interpolate_mixture_surface(
+            interp_leverage = self._interpolate_mixture_surface(
                 surface_domain,
                 leverage,
             )
             # Create the hovertemplate
             labels = list(grid_df.columns)
-            hovertemplate = self.build_hovertemplate(labels, ["Leverage"], precision=3)
+            hovertemplate = self._build_hovertemplate(labels, ["Leverage"], precision=3)
             customdata = grid_df.copy()
             customdata["Leverage"] = leverage
             customdata = customdata.to_numpy()
@@ -277,7 +277,7 @@ class GraphsMixin(Renderer, DataBuilder):
             f"{ax1}:0, {ax2}:0, {ax3}:{1-L:.2f}, {other_mix[0]}:{L:.2f}" if L != 0 else f"{ax1}:0, {ax2}:0, {ax3}:1"
             ]
             # Create the figure
-            fig1 = self.render_contour_mixture(
+            fig1 = self._render_contour_mixture(
                                             grid_df_scaled = grid_df_scaled,
                                             grid_df = grid_df,
                                             response = interp_leverage,
@@ -297,7 +297,7 @@ class GraphsMixin(Renderer, DataBuilder):
                                             domain=domain,
                                             surface_domain=surface_domain,
                                         )
-            fig2 = self.render_surface_mixture(
+            fig2 = self._render_surface_mixture(
                                             grid_df_scaled = grid_df_scaled,
                                             grid_df = grid_df,
                                             response = leverage,
@@ -435,27 +435,27 @@ class GraphsMixin(Renderer, DataBuilder):
         
         #3) Predict response(s)
         responses = [response] if second_response is None else [response, second_response]
-        predicted_responses = self.predict(matrix_to_pred=grid_df_coded, responses=responses)
+        predicted_responses = self._predict(matrix_to_pred=grid_df_coded, responses=responses)
 
         #4) Correct response if needed
         if corrected is not None:
             corrected_resposes = pd.DataFrame()
             for resp in responses:
                 if corrected == "replicates":
-                    conf_int = self.calculate_confidence_interval(
+                    conf_int = self._calculate_confidence_interval(
                                                 grid_of_points=grid_df_coded,
                                                 response=resp,
                                                 type_of_correction="replicates",
                                                 alpha=alpha
                                             )
                 elif corrected == "residuals":
-                    conf_int = self.calculate_confidence_interval(
+                    conf_int = self._calculate_confidence_interval(
                                                 grid_of_points=grid_df_coded,
                                                 response=resp,
                                                 type_of_correction="residuals",
                                                 alpha=alpha
                                             )
-                corrected_resposes[resp] = self.add_confidence_interval(
+                corrected_resposes[resp] = self._add_confidence_interval(
                                             predicted_response=predicted_responses[resp],
                                             response=resp,
                                             conf_int=conf_int
@@ -468,8 +468,8 @@ class GraphsMixin(Renderer, DataBuilder):
             for name in coded_constant_levels.keys():
                 constant_levels[name] = grid_df[name].iloc[0]
             # Scale the grid for mixture plotting
-            grid_df_scaled = self.mixture_scaler(grid_df, constant_levels)
-            surface_domain = self.build_mixture_surface_domain(
+            grid_df_scaled = self._scale_mixture(grid_df, constant_levels)
+            surface_domain = self._build_mixture_surface_domain(
                 grid_df_scaled=grid_df_scaled,
                 a_title=ax1,
                 b_title=ax2,
@@ -483,7 +483,7 @@ class GraphsMixin(Renderer, DataBuilder):
                     if corrected is None
                     else corrected_resposes[resp].to_numpy()
                 )
-                interp_responses[resp] = self.interpolate_mixture_surface(
+                interp_responses[resp] = self._interpolate_mixture_surface(
                     surface_domain,
                     response_values,
                 )
@@ -491,14 +491,14 @@ class GraphsMixin(Renderer, DataBuilder):
         #5) Add feasible region if needed
         if feasible_region:
             if ax3 is None:
-                Z_feasible = self.compute_feasible_region(resp1 = response,
+                Z_feasible = self._compute_feasible_region(resp1 = response,
                                                         response1 = corrected_resposes[response] if corrected is not None else predicted_responses[response],
                                                         resp2 = second_response if second_response is not None else None,
                                                         response2 = corrected_resposes[second_response] if (corrected is not None and second_response is not None) else (predicted_responses[second_response] if second_response is not None else None)
                                                         )
                 Z_feasible = Z_feasible.reshape((resolution, resolution))
             else:
-                Z_feasible = self.compute_feasible_region(resp1 = response,
+                Z_feasible = self._compute_feasible_region(resp1 = response,
                                                         response1 = interp_responses[response],
                                                         resp2 = second_response if second_response is not None else None,
                                                         response2 = interp_responses[second_response] if second_response is not None else None
@@ -516,14 +516,14 @@ class GraphsMixin(Renderer, DataBuilder):
                 domain,
             )
             labels = list(grid_df.columns)
-            hovertemplate = self.build_hovertemplate(labels, responses, precision=3)
-            customdata = self.build_customdata(grid_df, predicted_responses if corrected is None else corrected_resposes)
+            hovertemplate = self._build_hovertemplate(labels, responses, precision=3)
+            customdata = self._build_customdata(grid_df, predicted_responses if corrected is None else corrected_resposes)
             # Extract constant levels in decoded space
             constant_levels = {}
             for name in coded_constant_levels.keys():
                 constant_levels[name] = grid_df[name].iloc[0]
                 
-            fig_cp = self.render_contour_process(                               
+            fig_cp = self._render_contour_process(
                                grid = grid_df,
                                x_title = ax1,
                                y_title = ax2,
@@ -537,7 +537,7 @@ class GraphsMixin(Renderer, DataBuilder):
                                feasible_region = Z_feasible if feasible_region else None,
                                process_surface_domain=process_surface_domain)
             
-            fig_surf = self.render_surface_process(
+            fig_surf = self._render_surface_process(
                                grid = grid_df,
                                x_title = ax1,
                                y_title = ax2,
@@ -556,7 +556,7 @@ class GraphsMixin(Renderer, DataBuilder):
         else:
             # Create the hovertemplate
             labels = list(grid_df.columns)
-            hovertemplate = self.build_hovertemplate(labels, responses, precision=3)
+            hovertemplate = self._build_hovertemplate(labels, responses, precision=3)
             # Build vertex text
             other_mix = [f for f in constant_levels.keys() if self._factors[f].type == "mix" and f not in [ax1, ax2, ax3]]
             L = np.sum([constant_levels[f] for f in other_mix]) if len(other_mix) > 0 else 0
@@ -566,9 +566,9 @@ class GraphsMixin(Renderer, DataBuilder):
             f"{ax1}:0, {ax2}:0, {ax3}:{1-L:.2f}, {other_mix[0]}:{L:.2f}" if L != 0 else f"{ax1}:0, {ax2}:0, {ax3}:1"
             ]  
             # Customdata for hover
-            customdata = self.build_customdata(grid_df, predicted_responses if corrected is None else corrected_resposes)
+            customdata = self._build_customdata(grid_df, predicted_responses if corrected is None else corrected_resposes)
             # Create the figure
-            fig1 = self.render_contour_mixture(
+            fig1 = self._render_contour_mixture(
                                             grid_df_scaled = grid_df_scaled,
                                             grid_df = grid_df,
                                             response = interp_responses[response],
@@ -591,7 +591,7 @@ class GraphsMixin(Renderer, DataBuilder):
                                             domain=domain,
                                             surface_domain=surface_domain,
                                         )
-            fig2 = self.render_surface_mixture(
+            fig2 = self._render_surface_mixture(
                                             grid_df_scaled = grid_df_scaled,
                                             grid_df = grid_df,
                                             response = corrected_resposes[response] if corrected is not None else predicted_responses[response],
@@ -680,7 +680,7 @@ class GraphsMixin(Renderer, DataBuilder):
                                 )
         
         if type == "replicates":
-            conf_int = self.calculate_confidence_interval(
+            conf_int = self._calculate_confidence_interval(
                                         grid_of_points=grid_df_coded,
                                         response=response,
                                         type_of_correction="replicates",
@@ -688,7 +688,7 @@ class GraphsMixin(Renderer, DataBuilder):
                                     )
             
         elif type == "residuals":
-            conf_int = self.calculate_confidence_interval(
+            conf_int = self._calculate_confidence_interval(
                                         grid_of_points=grid_df_coded,
                                         response=response,
                                         type_of_correction="residuals",
@@ -707,7 +707,7 @@ class GraphsMixin(Renderer, DataBuilder):
                 domain,
             )
             labels = list(grid_df.columns)
-            hovertemplate = self.build_hovertemplate(labels, ["Conf. Interval"], precision=3)
+            hovertemplate = self._build_hovertemplate(labels, ["Conf. Interval"], precision=3)
             customdata = grid_df.copy()
             customdata['conf_int'] = conf_int
             customdata = customdata.to_numpy()
@@ -716,7 +716,7 @@ class GraphsMixin(Renderer, DataBuilder):
             for name in coded_constant_levels.keys():
                 constant_levels[name] = grid_df[name].iloc[0]
                 
-            fig_cp = self.render_contour_process(                               
+            fig_cp = self._render_contour_process(
                                grid = grid_df,
                                x_title = ax1,
                                y_title = ax2,
@@ -727,7 +727,7 @@ class GraphsMixin(Renderer, DataBuilder):
                                customdata = customdata,
                                process_surface_domain=process_surface_domain)
             
-            fig_surf = self.render_surface_process(
+            fig_surf = self._render_surface_process(
                                grid = grid_df,
                                x_title = ax1,
                                y_title = ax2,
@@ -748,21 +748,21 @@ class GraphsMixin(Renderer, DataBuilder):
             for name in coded_constant_levels.keys():
                 constant_levels[name] = grid_df[name].iloc[0]
             # Scale the grid for mixture plotting
-            grid_df_scaled = self.mixture_scaler(grid_df, constant_levels)
-            surface_domain = self.build_mixture_surface_domain(
+            grid_df_scaled = self._scale_mixture(grid_df, constant_levels)
+            surface_domain = self._build_mixture_surface_domain(
                 grid_df_scaled=grid_df_scaled,
                 a_title=ax1,
                 b_title=ax2,
                 c_title=ax3,
                 mode=domain,
             )
-            interp_conf_int = self.interpolate_mixture_surface(
+            interp_conf_int = self._interpolate_mixture_surface(
                 surface_domain,
                 conf_int,
             )
             # Create the hovertemplate
             labels = list(grid_df.columns)
-            hovertemplate = self.build_hovertemplate(labels, ["conf_int"], precision=3)
+            hovertemplate = self._build_hovertemplate(labels, ["conf_int"], precision=3)
             # Build vertex text
             other_mix = [f for f in constant_levels.keys() if self._factors[f].type == "mix" and f not in [ax1, ax2, ax3]]
             L = np.sum([constant_levels[f] for f in other_mix]) if len(other_mix) > 0 else 0
@@ -776,7 +776,7 @@ class GraphsMixin(Renderer, DataBuilder):
             customdata['conf_int'] = conf_int
             customdata = customdata.to_numpy()
             # Create the figure
-            fig1 = self.render_contour_mixture(
+            fig1 = self._render_contour_mixture(
                                             grid_df_scaled = grid_df_scaled,
                                             grid_df = grid_df,
                                             response = interp_conf_int,
@@ -797,7 +797,7 @@ class GraphsMixin(Renderer, DataBuilder):
                                             surface_domain=surface_domain,
                                         )
             
-            fig2 = self.render_surface_mixture(
+            fig2 = self._render_surface_mixture(
                                             grid_df_scaled = grid_df_scaled,
                                             grid_df = grid_df,
                                             response = conf_int,
@@ -841,224 +841,176 @@ class GraphsMixin(Renderer, DataBuilder):
             its interval does not include zero.
         """
         if response is None:
-            fig = self.regression_coefficients()
+            fig = self._regression_coefficients()
         else:
-            fig = self.regression_coefficients_for_response(response)
+            fig = self._regression_coefficients_for_response(response)
         return fig
     
-    def plot_residuals(
+    def plot_diagnostics(
         self,
         response: str | None = None,
-        cv: bool = False,
-        x_axis: Literal["exp_order", "exp_idx", "sequence"] = "exp_order",
-    ):
-        """Plot residuals by experimental run.
-
-        Args:
-            response (str, optional): Response to display. If omitted, the
-                figure provides a response dropdown.
-            cv (bool): Whether to use leave-one-out cross-validation residuals
-                instead of training residuals.
-            x_axis (str): Run coordinate: ``"exp_order"``, ``"exp_idx"``, or
-                ``"sequence"``. Experimental order falls back to experiment
-                index and then to a one-based sequence when unavailable.
-
-        Returns:
-            plotly.graph_objects.Figure: Residual-by-run plot.
-
-        Notes:
-            Use :meth:`plot_residuals_vs_fitted` to inspect curvature and
-            changing variance against fitted values.
-        """
-        if isinstance(response, bool):
-            cv = response
-            response = None
-        fig = self.residuals_dashboard(
-            response=response,
-            cv=cv,
-            x_axis=x_axis,
-        )
-        return fig
-    
-    def plot_exp_vs_pred(
-        self,
-        response: str | None = None,
-        cv: bool = False,
-    ):
-        """Plot experimental values against model predictions.
-
-        Args:
-            response (str, optional): Response to display. If omitted, the
-                figure provides a response dropdown.
-            cv (bool): Whether to use leave-one-out cross-validation
-                predictions instead of training predictions.
-
-        Returns:
-            plotly.graph_objects.Figure: Observed-versus-predicted scatter plot
-            with a one-to-one reference line.
-
-        Notes:
-            Points should cluster around the one-to-one line. Systematic
-            departures may indicate model bias or inadequacy.
-        """
-        if isinstance(response, bool):
-            cv = response
-            response = None
-        if response is None:
-            fig = self.exp_vs_pred(cv=cv)
-        else:
-            fig = self.exp_vs_pred_for_response(response, cv=cv)
-        return fig
-
-    def plot_confirmation_exp_vs_pred(self, response: str) -> go.Figure:
-        """Plot grouped confirmation means against OLS predictions.
-
-        One point is shown for each distinct confirmation setting. The
-        experimental coordinate is the mean of its confirmation replicates.
-
-        Args:
-            response (str): Fitted response to plot.
-
-        Returns:
-            plotly.graph_objects.Figure: Observed-versus-predicted confirmation
-                plot.
-
-        Raises:
-            ValueError: If the response, fitted model, or confirmation data are
-                unavailable.
-        """
-        return self.confirmation_exp_vs_pred_for_response(response)
-
-    def plot_confirmation_residuals(self, response: str) -> go.Figure:
-        """Plot confirmation residuals against grouped observed means.
-
-        Residuals follow the library convention ``observed - predicted``.
-
-        Args:
-            response (str): Fitted response to plot.
-
-        Returns:
-            plotly.graph_objects.Figure: Confirmation residual plot.
-
-        Raises:
-            ValueError: If the response, fitted model, or confirmation data are
-                unavailable.
-        """
-        return self.confirmation_residuals_for_response(response)
-    
-    def plot_model_diagnostics(
-        self,
-        response: str | None = None,
-        cv: bool = False,
-    ):
-        """Create a four-panel model-diagnostics figure.
-
-        The panels show observed versus predicted values, residuals versus
-        fitted values, a normal Q-Q plot, and a residual histogram.
-
-        Args:
-            response (str, optional): Response to display. If omitted, the
-                figure provides a response dropdown.
-            cv (bool): Whether to use leave-one-out cross-validation
-                predictions and residuals instead of training values.
-
-        Returns:
-            plotly.graph_objects.Figure: Four-panel diagnostic figure.
-        """
-        if isinstance(response, bool):
-            cv = response
-            response = None
-        if response is None:
-            fig = self.model_diagnostics(cv=cv)
-        else:
-            fig = self.model_diagnostics_for_response(response, cv=cv)
-        return fig
-
-    def plot_residuals_vs_fitted(
-        self,
-        response: str,
-        cv: bool = False,
-    ) -> go.Figure:
-        """Plot residuals against fitted values for one response.
-
-        Args:
-            response (str): Fitted response to display.
-            cv (bool): Whether to use leave-one-out cross-validation values.
-
-        Returns:
-            plotly.graph_objects.Figure: Residuals-versus-fitted plot.
-        """
-        return self.residuals_vs_fitted_for_response(response, cv=cv)
-
-    def plot_residuals_by_run(
-        self,
-        response: str,
+        *,
+        view: Literal[
+            "overview",
+            "observed_vs_predicted",
+            "residuals_vs_fitted",
+            "residuals_by_run",
+            "qq",
+            "histogram",
+        ] = "overview",
         cv: bool = False,
         x_axis: Literal["exp_order", "exp_idx", "sequence"] = "exp_order",
     ) -> go.Figure:
-        """Plot residuals by experimental run for one response.
+        """Plot model diagnostics in one consolidated entry point.
 
         Args:
-            response (str): Fitted response to display.
-            cv (bool): Whether to use leave-one-out cross-validation residuals.
-            x_axis (str): Run coordinate: ``"exp_order"``, ``"exp_idx"``, or
-                ``"sequence"``. Experimental order falls back to experiment
-                index and then to a one-based sequence when unavailable.
+            response (str, optional): Response to display. If omitted, the
+                figure provides a response dropdown.
+            view (str): Diagnostic view. ``"overview"`` shows experimental
+                versus predicted, residuals versus fitted, normal Q-Q, and the
+                residual histogram in a four-panel figure.
+            cv (bool): Whether to use leave-one-out cross-validation
+                predictions and residuals.
+            x_axis (str): Run coordinate used by ``"residuals_by_run"``.
 
         Returns:
-            plotly.graph_objects.Figure: Residual-by-run plot.
+            plotly.graph_objects.Figure: Requested diagnostic figure.
         """
-        return self.residuals_by_run_for_response(
-            response,
-            cv=cv,
-            x_axis=x_axis,
+        valid_views = {
+            "overview",
+            "observed_vs_predicted",
+            "residuals_vs_fitted",
+            "residuals_by_run",
+            "qq",
+            "histogram",
+        }
+        if view not in valid_views:
+            choices = ", ".join(sorted(valid_views))
+            raise ValueError(f"view must be one of: {choices}.")
+
+        if response is not None:
+            return self._diagnostic_figure_for_response(
+                response, view=view, cv=cv, x_axis=x_axis
+            )
+
+        responses = list(self._response_list or [])
+        if not responses:
+            raise ValueError("No responses are available for plotting.")
+        if view == "overview":
+            return self._model_diagnostics(cv=cv)
+        if view == "observed_vs_predicted":
+            return self._exp_vs_pred(cv=cv)
+        if view == "residuals_by_run":
+            return self._residuals_dashboard(cv=cv, x_axis=x_axis)
+
+        figures = [
+            self._diagnostic_figure_for_response(
+                item, view=view, cv=cv, x_axis=x_axis
+            )
+            for item in responses
+        ]
+        return self._combine_response_figures(figures, responses)
+
+    def _diagnostic_figure_for_response(
+        self,
+        response: str,
+        *,
+        view: str,
+        cv: bool,
+        x_axis: str,
+    ) -> go.Figure:
+        if view == "overview":
+            return self._model_diagnostics_for_response(response, cv=cv)
+        if view == "observed_vs_predicted":
+            return self._exp_vs_pred_for_response(response, cv=cv)
+        if view == "residuals_vs_fitted":
+            return self._residuals_vs_fitted_for_response(response, cv=cv)
+        if view == "residuals_by_run":
+            return self._residuals_by_run_for_response(
+                response, cv=cv, x_axis=x_axis
+            )
+        if view == "qq":
+            return self._qq_residuals_for_response(response, cv=cv)
+        return self._residuals_histogram_for_response(response, cv=cv)
+
+    @staticmethod
+    def _combine_response_figures(
+        figures: list[go.Figure], responses: list[str]
+    ) -> go.Figure:
+        """Combine equivalent single-response plots behind one dropdown."""
+        combined = go.Figure()
+        trace_ranges = []
+        for index, source in enumerate(figures):
+            start = len(combined.data)
+            for trace in source.data:
+                trace.visible = index == 0
+                combined.add_trace(trace)
+            trace_ranges.append((start, len(combined.data)))
+
+        buttons = []
+        for response, source, (start, stop) in zip(
+            responses, figures, trace_ranges
+        ):
+            visible = [False] * len(combined.data)
+            visible[start:stop] = [True] * (stop - start)
+            buttons.append(
+                dict(
+                    label=response,
+                    method="update",
+                    args=[
+                        {"visible": visible},
+                        {"title.text": source.layout.title.text},
+                    ],
+                )
+            )
+
+        combined.update_layout(figures[0].layout)
+        combined.update_layout(
+            updatemenus=[
+                dict(
+                    buttons=buttons,
+                    direction="down",
+                    showactive=True,
+                    x=0,
+                    xanchor="left",
+                    y=1.12,
+                    yanchor="top",
+                )
+            ]
+        )
+        return combined
+
+    def plot_confirmation(
+        self,
+        response: str,
+        *,
+        view: Literal["observed_vs_predicted", "residuals"],
+    ) -> go.Figure:
+        """Plot one confirmation diagnostic for a fitted response."""
+        if view == "observed_vs_predicted":
+            return self._confirmation_exp_vs_pred_for_response(response)
+        if view == "residuals":
+            return self._confirmation_residuals_for_response(response)
+        raise ValueError(
+            "view must be either 'observed_vs_predicted' or 'residuals'."
         )
 
-    def plot_qq_residuals(
-        self,
-        response: str,
-        cv: bool = False,
-    ) -> go.Figure:
-        """Plot normal Q-Q residual diagnostics for one response.
-
-        Args:
-            response (str): Fitted response to display.
-            cv (bool): Whether to use leave-one-out cross-validation residuals.
-
-        Returns:
-            plotly.graph_objects.Figure: Normal Q-Q plot.
-        """
-        return self.qq_residuals_for_response(response, cv=cv)
-
-    def plot_residuals_histogram(
-        self,
-        response: str,
-        cv: bool = False,
-    ) -> go.Figure:
-        """Plot the residual distribution for one response.
-
-        Args:
-            response (str): Fitted response to display.
-            cv (bool): Whether to use leave-one-out cross-validation residuals.
-
-        Returns:
-            plotly.graph_objects.Figure: Residual histogram.
-        """
-        return self.residuals_histogram_for_response(response, cv=cv)
-        
     
     def plot_main_effects(self, 
-                            response: str,
-                            coded: bool = True,
-                            n_points: int = 50,
-                            ) -> go.Figure:
-        """Plot fitted main-effect profiles for all non-mixture factors.
+                          response: str,
+                          factor: str | None = None,
+                          coded: bool = True,
+                          n_points: int = 50,
+                          ) -> go.Figure:
+        """Plot one or all fitted main-effect profiles.
 
         Each factor varies across its range while all other process factors are
         held at their centers and categorical factors at their reference levels.
 
         Args:
             response (str): Fitted response to display.
+            factor (str, optional): Factor to display. If omitted, all
+                non-mixture factors are shown in a dashboard.
             coded (bool): Whether to display coded rather than actual units.
             n_points (int): Number of evaluation points for each continuous
                 factor profile.
@@ -1071,51 +1023,28 @@ class GraphsMixin(Renderer, DataBuilder):
             ValueError: If the design contains mixture components. Use
                 :meth:`plot_mixture_trace` for mixture models.
         """
-        fig = self.main_effects_model(
-            response=response,
-            coded=coded,
-            n_points=n_points,
-        )
-        return fig
-
-    def plot_main_effect(
-        self,
-        response: str,
-        factor: str,
-        coded: bool = True,
-        n_points: int = 50,
-    ) -> go.Figure:
-        """Plot the fitted main-effect profile for one non-mixture factor.
-
-        Args:
-            response (str): Fitted response to display.
-            factor (str): Process or categorical factor to vary.
-            coded (bool): Whether to display coded rather than actual units.
-            n_points (int): Number of evaluation points for a continuous
-                factor profile.
-
-        Returns:
-            plotly.graph_objects.Figure: Main-effect profile.
-
-        Raises:
-            ValueError: If ``factor`` is a mixture component or is unavailable.
-        """
-        return self.main_effect_model(
-            response=response,
-            factor=factor,
-            coded=coded,
-            n_points=n_points,
+        if factor is None:
+            return self._main_effects_model(
+                response=response,
+                coded=coded,
+                n_points=n_points,
+            )
+        return self._main_effect_model(
+            response=response, factor=factor, coded=coded, n_points=n_points
         )
     
     def plot_interactions(self, 
-                            response: str,
-                            coded: bool = True,
-                            n_points: int = 50,
-                            ) -> go.Figure:
-        """Plot fitted interactions for all non-mixture factor pairs.
+                          response: str,
+                          factors: tuple[str, str] | None = None,
+                          coded: bool = True,
+                          n_points: int = 50,
+                          ) -> go.Figure:
+        """Plot one or all fitted non-mixture factor interactions.
 
         Args:
             response (str): Fitted response to display.
+            factors (tuple[str, str], optional): Pair to display. If omitted,
+                all available pairs are exposed through a selector.
             coded (bool): Whether to display coded rather than actual units.
             n_points (int): Number of evaluation points along the factor shown
                 on each horizontal axis.
@@ -1132,41 +1061,18 @@ class GraphsMixin(Renderer, DataBuilder):
             Non-parallel profiles indicate that one factor's fitted effect
             depends on the level of the other factor.
         """
-        fig = self.interactions_model(
+        if factors is None:
+            return self._interactions_model(
+                response=response,
+                coded=coded,
+                n_points=n_points,
+            )
+        if not isinstance(factors, tuple) or len(factors) != 2:
+            raise ValueError("factors must be a tuple containing two factor names.")
+        return self._interaction_model(
             response=response,
-            coded=coded,
-            n_points=n_points,
-        )
-        return fig
-
-    def plot_interaction(
-        self,
-        response: str,
-        factor1: str,
-        factor2: str,
-        coded: bool = True,
-        n_points: int = 50,
-    ) -> go.Figure:
-        """Plot one fitted two-factor interaction profile.
-
-        Args:
-            response (str): Fitted response to display.
-            factor1 (str): Factor varied along the horizontal axis.
-            factor2 (str): Factor represented by separate profiles.
-            coded (bool): Whether to display coded rather than actual units.
-            n_points (int): Number of evaluation points along ``factor1``.
-
-        Returns:
-            plotly.graph_objects.Figure: Two-factor interaction plot.
-
-        Raises:
-            ValueError: If either factor is a mixture component, the factors
-                are identical, or either factor is unavailable.
-        """
-        return self.interaction_model(
-            response=response,
-            factor1=factor1,
-            factor2=factor2,
+            factor1=factors[0],
+            factor2=factors[1],
             coded=coded,
             n_points=n_points,
         )
@@ -1197,7 +1103,7 @@ class GraphsMixin(Renderer, DataBuilder):
             ValueError: If fewer than two mixture components are available, the
                 reference is unsupported, or ``n_points`` is less than two.
         """
-        return self.mixture_trace_model(
+        return self._mixture_trace_model(
             response=response,
             reference=reference,
             n_points=n_points,

@@ -50,7 +50,7 @@ Quick Reference
    * - :meth:`~doetools.utils.summary.DesignSummaryMixin.get_responses`
      - Imported experimental responses
      - Responses imported
-   * - :meth:`~doetools.utils.summary.DesignSummaryMixin.get_predicted_responses`
+   * - :meth:`~doetools.utils.summary.DesignSummaryMixin.get_fitted_values`
      - In-sample fitted values for every imported response
      - MLR model fitted
    * - :meth:`~doetools.utils.summary.DesignSummaryMixin.get_leverages`
@@ -80,6 +80,12 @@ Quick Reference
    * - :meth:`~doetools.utils.summary.DesignSummaryMixin.get_replicate_summary`
      - Per-group replicate statistics for one response
      - MLR model fitted
+   * - :meth:`~doetools.utils.prediction.PredictionPointsMixin.get_prediction_points`
+     - Loaded prediction factor settings in actual or coded units
+     - Prediction points loaded
+   * - :meth:`~doetools.utils.prediction.PredictionPointsMixin.get_prediction_results`
+     - Factor settings, prediction, and mean-response confidence limits
+     - Fitted model and prediction points
    * - :meth:`~doetools.utils.confirmation.ConfirmationRunsMixin.get_confirmation_points`
      - Loaded confirmation factor settings
      - Confirmation runs loaded
@@ -238,10 +244,10 @@ internal design order through ``Exp. Idx``.
 
    responses = design.get_responses()
 
-Predicted Responses
-^^^^^^^^^^^^^^^^^^^
+Fitted Values
+^^^^^^^^^^^^^
 
-.. automethod:: doetools.utils.summary.DesignSummaryMixin.get_predicted_responses
+.. automethod:: doetools.utils.summary.DesignSummaryMixin.get_fitted_values
 
 Returns full-precision, in-sample fitted values for every imported response. These
 are the fitted OLS values at the original design runs, not leave-one-out
@@ -249,9 +255,10 @@ cross-validation predictions and not predictions at new factor settings.
 
 .. code-block:: python
 
-   fitted = design.get_predicted_responses()
+   fitted = design.get_fitted_values()
 
-For new factor settings, use :meth:`predict` as described in :doc:`prediction`.
+For new factor settings, use :meth:`get_prediction_results` as described in
+:doc:`prediction`.
 
 Leverages
 ^^^^^^^^^
@@ -359,6 +366,31 @@ returns an empty table with those columns when no replicate groups are available
    vif = design.get_vif()
    dispersion = design.get_dispersion_matrix(response="Yield")
    replicates = design.get_replicate_summary(response="Yield")
+
+Prediction-Point Getters
+------------------------
+
+These getters require points loaded with :meth:`load_prediction_points`.
+
+.. automethod:: doetools.utils.prediction.PredictionPointsMixin.get_prediction_points
+   :noindex:
+
+.. automethod:: doetools.utils.prediction.PredictionPointsMixin.get_prediction_results
+   :noindex:
+
+The result for one response includes every factor column followed by
+``Predicted``, ``CI Lower``, and ``CI Upper``. Factor settings use actual units by
+default and coded values when ``coded=True``. If the fitted model has no valid
+residual mean square, point predictions are still returned and both confidence
+interval columns are ``NaN``.
+
+.. code-block:: python
+
+   points = design.get_prediction_points(coded=False)
+   results = design.get_prediction_results(response="Yield", alpha=0.05)
+
+See :doc:`prediction` for loading, validation, and the confidence-interval
+definition.
 
 Confirmation-Run Getters
 ------------------------

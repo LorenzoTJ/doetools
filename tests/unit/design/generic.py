@@ -1,563 +1,262 @@
-"""
-Comprehensive test suite for ImportDesign class.
+"""Tests for importing externally generated experimental designs."""
 
-This module provides production-ready tests for importing external designs,
-including validation, factor inference, and file format handling.
-"""
+from collections import OrderedDict
+import inspect
 
-import pytest
 import numpy as np
 import pandas as pd
-import tempfile
-import os
+import pytest
 
 from doetools.design.generic import ImportDesign
-from doetools.utils import ContinuousFactor, CategoricalFactor
+from doetools.utils import CategoricalFactor, ContinuousFactor, MixtureFactor
+
+
+@pytest.fixture
+def actual_design_file(tmp_path):
+    path = tmp_path / "design.csv"
+    pd.DataFrame(
+        {
+            "Temperature": [20, 25, 40, 20],
+            "Catalyst": ["B", "A", "C", "B"],
+            "Response": [10.2, 11.0, 14.5, 10.8],
+        }
+    ).to_csv(path, index=False)
+    return path
+
+
+@pytest.fixture
+def process_factors():
+    return {
+        "Temperature": ContinuousFactor(
+            n_levels=3,
+            lower_bound=20,
+            upper_bound=40,
+            decimals=1,
+        ),
+        "Catalyst": CategoricalFactor(
+            levels=["C", "A", "B"],
+            reference_level="A",
+        ),
+    }
 
 
 class TestImportDesign:
-    """Test suite for ImportDesign"""
+    def test_public_signature_uses_factors_then_source(self):
+        constructor = inspect.signature(ImportDesign)
 
-    # ===============================================================
-    # HELPER METHODS
-    # ===============================================================
+        assert list(constructor.parameters)[:2] == ["factors", "source"]
+        assert "file_path" not in constructor.parameters
 
-    @pytest.fixture
-    def temp_csv_continuous(self):
-        """Create temporary CSV file with continuous factors"""
-        data = pd.DataFrame({
-            'Temperature': [20, 30, 40, 20, 30, 40],
-            'Pressure': [1.0, 2.5, 4.0, 1.0, 2.5, 4.0],
-            'Time': [10, 15, 20, 10, 15, 20]
-        })
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-            data.to_csv(f.name, index=False)
-            temp_path = f.name
-        
-        yield temp_path
-        
-        # Cleanup
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
-
-    @pytest.fixture
-    def temp_csv_categorical(self):
-        """Create temporary CSV file with categorical factors"""
-        data = pd.DataFrame({
-            'Material': ['A', 'B', 'C', 'A', 'B', 'C'],
-            'Supplier': ['X', 'Y', 'X', 'Y', 'X', 'Y'],
-            'Treatment': ['Hot', 'Cold', 'Hot', 'Cold', 'Hot', 'Cold']
-        })
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-            data.to_csv(f.name, index=False)
-            temp_path = f.name
-        
-        yield temp_path
-        
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
-
-    @pytest.fixture
-    def temp_csv_mixed(self):
-        """Create temporary CSV file with mixed factor types"""
-        data = pd.DataFrame({
-            'Temperature': [20, 30, 40, 20, 30, 40],
-            'Material': ['A', 'B', 'A', 'B', 'A', 'B'],
-            'Pressure': [1.0, 2.5, 4.0, 1.0, 2.5, 4.0]
-        })
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-            data.to_csv(f.name, index=False)
-            temp_path = f.name
-        
-        yield temp_path
-        
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
-
-    @pytest.fixture
-    def temp_csv_coded(self):
-        """Create temporary CSV file with coded values"""
-        data = pd.DataFrame({
-            'X1': [-1, 0, 1, -1, 0, 1],
-            'X2': [-1, -1, -1, 1, 1, 1],
-            'X3': [0, 0, 0, 0, 0, 0]
-        })
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-            data.to_csv(f.name, index=False)
-            temp_path = f.name
-        
-        yield temp_path
-        
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
-
-    @pytest.fixture
-    def temp_excel(self):
-        """Create temporary Excel file"""
-        data = pd.DataFrame({
-            'Temperature': [20, 30, 40],
-            'Pressure': [1.0, 2.5, 4.0]
-        })
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.xlsx', delete=False) as f:
-            temp_path = f.name
-        
-        data.to_excel(temp_path, index=False)
-        
-        yield temp_path
-        
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
-
-    # ===============================================================
-    # INITIALIZATION TESTS
-    # ===============================================================
-
-    def test_initialization_continuous(self, temp_csv_continuous):
-        """Test basic initialization with continuous factors"""
-        design = ImportDesign(
-            vars=['Temperature', 'Pressure'],
-            vars_type=['cont', 'cont'],
-            file_path=temp_csv_continuous,
-            coded=False
+    def test_accepts_dataframe_defensively(self, process_factors):
+        source = pd.DataFrame(
+            {
+                "Temperature": [20.0, 25.0, 40.0],
+                "Catalyst": ["C", "A", "B"],
+                "Ignored": [1, 2, 3],
+            },
+            index=[10, 20, 30],
         )
-        
+
+        design = ImportDesign(factors=process_factors, source=source)
+        source.loc[10, "Temperature"] = 999.0
+
+        assert list(design._design_matrix) == ["Temperature", "Catalyst"]
+        assert design._design_matrix.loc[10, "Temperature"] == 20.0
+
+    def test_imports_factor_columns_in_mapping_order(
+        self, actual_design_file, process_factors
+    ):
+        factors = OrderedDict(
+            [
+                ("Catalyst", process_factors["Catalyst"]),
+                ("Temperature", process_factors["Temperature"]),
+            ]
+        )
+
+        design = ImportDesign(factors=factors, source=actual_design_file)
+
         assert design._design_type == "Generic"
-        assert 'Temperature' in design._factors
-        assert 'Pressure' in design._factors
-        assert isinstance(design._factors['Temperature'], ContinuousFactor)
-        assert isinstance(design._factors['Pressure'], ContinuousFactor)
+        assert list(design._design_matrix) == ["Catalyst", "Temperature"]
+        assert "Response" not in design._design_matrix
 
-    def test_initialization_categorical(self, temp_csv_categorical):
-        """Test basic initialization with categorical factors"""
-        design = ImportDesign(
-            vars=['Material', 'Supplier'],
-            vars_type=['cat', 'cat'],
-            file_path=temp_csv_categorical,
-            coded=False
-        )
-        
-        assert design._design_type == "Generic"
-        assert 'Material' in design._factors
-        assert 'Supplier' in design._factors
-        assert isinstance(design._factors['Material'], CategoricalFactor)
-        assert isinstance(design._factors['Supplier'], CategoricalFactor)
+    def test_non_equispaced_continuous_levels_are_preserved(
+        self, actual_design_file, process_factors
+    ):
+        design = ImportDesign(factors=process_factors, source=actual_design_file)
+        factor = design._factors["Temperature"]
 
-    def test_initialization_mixed(self, temp_csv_mixed):
-        """Test initialization with mixed factor types"""
-        design = ImportDesign(
-            vars=['Temperature', 'Material', 'Pressure'],
-            vars_type=['cont', 'cat', 'cont'],
-            file_path=temp_csv_mixed,
-            coded=False
-        )
-        
-        assert len(design._factors) == 3
-        assert isinstance(design._factors['Temperature'], ContinuousFactor)
-        assert isinstance(design._factors['Material'], CategoricalFactor)
-        assert isinstance(design._factors['Pressure'], ContinuousFactor)
-
-    # ===============================================================
-    # VALIDATION TESTS
-    # ===============================================================
-
-    def test_invalid_vars_type_length(self, temp_csv_continuous):
-        """Test that mismatched vars and vars_type lengths raise error"""
-        with pytest.raises(ValueError, match="Number of variables and variable types must be equal"):
-            ImportDesign(
-                vars=['Temperature', 'Pressure'],
-                vars_type=['cont'],  # Only one type for two variables
-                file_path=temp_csv_continuous,
-                coded=False
-            )
-
-    def test_invalid_variable_type(self, temp_csv_continuous):
-        """Test that invalid variable types raise error"""
-        with pytest.raises(ValueError, match="must be either 'cont' or 'cat'"):
-            ImportDesign(
-                vars=['Temperature', 'Pressure'],
-                vars_type=['cont', 'invalid'],
-                file_path=temp_csv_continuous,
-                coded=False
-            )
-
-    def test_variable_not_in_file(self, temp_csv_continuous):
-        """Test that non-existent variables raise error"""
-        with pytest.raises(ValueError, match="not found in the file columns"):
-            ImportDesign(
-                vars=['Temperature', 'NonExistent'],
-                vars_type=['cont', 'cont'],
-                file_path=temp_csv_continuous,
-                coded=False
-            )
-
-    # ===============================================================
-    # FACTOR INFERENCE TESTS
-    # ===============================================================
-
-    def test_continuous_factor_bounds_inference(self, temp_csv_continuous):
-        """Test that continuous factor bounds are correctly inferred"""
-        design = ImportDesign(
-            vars=['Temperature'],
-            vars_type=['cont'],
-            file_path=temp_csv_continuous,
-            coded=False
-        )
-        
-        factor = design._factors['Temperature']
-        assert factor.lower_bound == 20
-        assert factor.upper_bound == 40
-
-    def test_continuous_factor_levels_inference(self, temp_csv_continuous):
-        """Test that number of levels is correctly inferred"""
-        design = ImportDesign(
-            vars=['Temperature'],
-            vars_type=['cont'],
-            file_path=temp_csv_continuous,
-            coded=False
-        )
-        
-        factor = design._factors['Temperature']
-        # Temperature has 3 unique values: 20, 30, 40
+        np.testing.assert_array_equal(factor.levels, [20, 25, 40])
+        np.testing.assert_allclose(factor.coded_levels, [-1.0, -0.5, 1.0])
         assert factor.n_levels == 3
-        assert set(factor.levels) == {20, 30, 40}
-
-    def test_continuous_factor_decimals_inference(self, temp_csv_continuous):
-        """Test that decimal precision is correctly inferred"""
-        design = ImportDesign(
-            vars=['Pressure'],
-            vars_type=['cont'],
-            file_path=temp_csv_continuous,
-            coded=False
+        np.testing.assert_allclose(
+            design._coded_design_matrix["Temperature"],
+            [-1.0, -0.5, 1.0, -1.0],
         )
-        
-        factor = design._factors['Pressure']
-        # Pressure values have 1 decimal place (1.0, 2.5, 4.0)
-        assert factor.decimals == 1
 
-    def test_categorical_factor_levels_inference(self, temp_csv_categorical):
-        """Test that categorical levels are correctly inferred"""
-        design = ImportDesign(
-            vars=['Material'],
-            vars_type=['cat'],
-            file_path=temp_csv_categorical,
-            coded=False
+    def test_categorical_order_and_reference_are_preserved(
+        self, actual_design_file, process_factors
+    ):
+        design = ImportDesign(factors=process_factors, source=actual_design_file)
+        factor = design._factors["Catalyst"]
+
+        assert factor.levels == ["C", "A", "B"]
+        assert factor.reference_level == "A"
+        np.testing.assert_allclose(factor.coded_levels, [-1.0, 0.0, 1.0])
+        np.testing.assert_allclose(
+            design._coded_design_matrix["Catalyst"],
+            [1.0, 0.0, -1.0, 1.0],
         )
-        
-        factor = design._factors['Material']
-        assert set(factor.levels) == {'A', 'B', 'C'}
 
-    # ===============================================================
-    # CODED VS UNCODED TESTS
-    # ===============================================================
+    def test_supplied_factor_objects_are_not_mutated(
+        self, actual_design_file, process_factors
+    ):
+        original = process_factors["Temperature"]
+        np.testing.assert_array_equal(original.levels, [20, 30, 40])
 
-    def test_coded_import(self, temp_csv_coded):
-        """Test importing already-coded design"""
-        design = ImportDesign(
-            vars=['X1', 'X2', 'X3'],
-            vars_type=['cont', 'cont', 'cont'],
-            file_path=temp_csv_coded,
-            coded=True
+        design = ImportDesign(factors=process_factors, source=actual_design_file)
+
+        assert design._factors["Temperature"] is not original
+        np.testing.assert_array_equal(original.levels, [20, 30, 40])
+        np.testing.assert_array_equal(
+            design._factors["Temperature"].levels, [20, 25, 40]
         )
-        
-        # Coded and design matrices should be the same
-        assert design._coded_design_matrix.equals(design._design_matrix)
-        
-        # Values should be -1, 0, 1
-        unique_vals = set(design._coded_design_matrix['X1'].unique())
-        assert unique_vals.issubset({-1, 0, 1})
 
-    def test_uncoded_import_generates_coded(self, temp_csv_continuous):
-        """Test that uncoded import generates coded matrix"""
-        design = ImportDesign(
-            vars=['Temperature'],
-            vars_type=['cont'],
-            file_path=temp_csv_continuous,
-            coded=False
+    def test_decodes_a_coded_design(self, tmp_path):
+        path = tmp_path / "coded.csv"
+        pd.DataFrame(
+            {
+                "Temperature": [-1.0, -0.5, 1.0],
+                "Catalyst": [-1.0, 0.0, 1.0],
+            }
+        ).to_csv(path, index=False)
+        factors = {
+            "Temperature": ContinuousFactor(3, 20, 40, decimals=1),
+            "Catalyst": CategoricalFactor(["C", "A", "B"], reference_level="A"),
+        }
+
+        design = ImportDesign(factors=factors, source=path, coded=True)
+
+        np.testing.assert_allclose(
+            design._design_matrix["Temperature"], [20.0, 25.0, 40.0]
         )
-        
-        # Coded matrix should be different from design matrix
-        assert not design._coded_design_matrix.equals(design._design_matrix)
-        
-        # Design matrix should have original values
-        assert 20 in design._design_matrix['Temperature'].values
-        assert 30 in design._design_matrix['Temperature'].values
-        assert 40 in design._design_matrix['Temperature'].values
-        
-        # Coded matrix should have normalized values
-        coded_vals = design._coded_design_matrix['Temperature'].unique()
-        assert len(coded_vals) == 3
-        assert set(coded_vals) == {-1, 0, 1}
-
-    def test_coding_continuous_factor(self, temp_csv_continuous):
-        """Test that continuous factors are properly coded"""
-        design = ImportDesign(
-            vars=['Temperature'],
-            vars_type=['cont'],
-            file_path=temp_csv_continuous,
-            coded=False
+        assert design._design_matrix["Catalyst"].tolist() == ["C", "A", "B"]
+        np.testing.assert_allclose(
+            design._factors["Temperature"].coded_levels, [-1.0, -0.5, 1.0]
         )
-        
-        # For continuous factor with bounds [20, 40], center is 30
-        # Coded values should be: -1 (20), 0 (30), 1 (40)
-        coded = design._coded_design_matrix['Temperature']
-        uncoded = design._design_matrix['Temperature']
-        
-        # Check that min/max are coded to -1/1
-        assert coded[uncoded == 20].iloc[0] == pytest.approx(-1.0, abs=0.01)
-        assert coded[uncoded == 40].iloc[0] == pytest.approx(1.0, abs=0.01)
-        assert coded[uncoded == 30].iloc[0] == pytest.approx(0.0, abs=0.01)
 
-    def test_coding_categorical_factor(self, temp_csv_categorical):
-        """Test that categorical factors are properly coded"""
-        design = ImportDesign(
-            vars=['Material'],
-            vars_type=['cat'],
-            file_path=temp_csv_categorical,
-            coded=False
+    def test_preserves_axial_codes_outside_unit_interval(self, tmp_path):
+        path = tmp_path / "ccd.csv"
+        pd.DataFrame({"Temperature": [15.86, 20.0, 30.0, 40.0, 44.14]}).to_csv(
+            path, index=False
         )
-        
-        # Categorical factors should be coded to -1, 0, 1 range
-        coded_vals = design._coded_design_matrix['Material'].unique()
-        assert len(coded_vals) == 3
-        # Should be in range [-1, 1]
-        assert all(-1 <= v <= 1 for v in coded_vals)
-        assert set(coded_vals) == {-1, 0, 1}
-        assert set(design._design_matrix['Material'].unique()) == {'A', 'B', 'C'}
+        factors = {"Temperature": ContinuousFactor(3, 20, 40, decimals=2)}
 
-    # ===============================================================
-    # FILE FORMAT TESTS
-    # ===============================================================
+        design = ImportDesign(factors=factors, source=path)
 
-    def test_csv_import(self, temp_csv_continuous):
-        """Test CSV file import"""
-        design = ImportDesign(
-            vars=['Temperature', 'Pressure'],
-            vars_type=['cont', 'cont'],
-            file_path=temp_csv_continuous,
-            coded=False
+        np.testing.assert_allclose(
+            design._factors["Temperature"].coded_levels,
+            [-1.414, -1.0, 0.0, 1.0, 1.414],
         )
-        
-        assert design._design_matrix is not None
-        assert len(design._design_matrix) == 6
 
-    def test_excel_import(self, temp_excel):
-        """Test Excel file import"""
-        design = ImportDesign(
-            vars=['Temperature', 'Pressure'],
-            vars_type=['cont', 'cont'],
-            file_path=temp_excel,
-            coded=False
-        )
-        
-        assert design._design_matrix is not None
+    def test_accepts_excel_files(self, tmp_path):
+        path = tmp_path / "design.xlsx"
+        pd.DataFrame({"Temperature": [20, 25, 40]}).to_excel(path, index=False)
+        factors = {"Temperature": ContinuousFactor(3, 20, 40, decimals=1)}
+
+        design = ImportDesign(factors=factors, source=path)
+
         assert len(design._design_matrix) == 3
 
-    # ===============================================================
-    # DESIGN MATRIX TESTS
-    # ===============================================================
+    @pytest.mark.parametrize(
+        ("factors", "exception", "message"),
+        [
+            ([], TypeError, "factors must be a mapping"),
+            ({}, ValueError, "at least one factor"),
+            ({"Temperature": object()}, TypeError, "must be a ContinuousFactor"),
+            ({1: ContinuousFactor(2, 0, 1)}, TypeError, "non-empty strings"),
+        ],
+    )
+    def test_validates_factor_mapping(
+        self, actual_design_file, factors, exception, message
+    ):
+        with pytest.raises(exception, match=message):
+            ImportDesign(factors=factors, source=actual_design_file)
 
-    def test_design_matrix_dimensions(self, temp_csv_continuous):
-        """Test that design matrix has correct dimensions"""
-        design = ImportDesign(
-            vars=['Temperature', 'Pressure'],
-            vars_type=['cont', 'cont'],
-            file_path=temp_csv_continuous,
-            coded=False
+    def test_rejects_missing_factor_columns(self, actual_design_file):
+        factors = {"Pressure": ContinuousFactor(2, 1, 2)}
+
+        with pytest.raises(ValueError, match="Factor columns not found"):
+            ImportDesign(factors=factors, source=actual_design_file)
+
+    def test_rejects_missing_factor_values(self, tmp_path):
+        path = tmp_path / "missing.csv"
+        pd.DataFrame({"Temperature": [20.0, np.nan, 40.0]}).to_csv(path, index=False)
+        factors = {"Temperature": ContinuousFactor(3, 20, 40)}
+
+        with pytest.raises(ValueError, match="contain missing values"):
+            ImportDesign(factors=factors, source=path)
+
+    def test_rejects_non_numeric_continuous_values(self, tmp_path):
+        path = tmp_path / "invalid.csv"
+        pd.DataFrame({"Temperature": [20, "hot", 40]}).to_csv(path, index=False)
+        factors = {"Temperature": ContinuousFactor(3, 20, 40)}
+
+        with pytest.raises(ValueError, match="must contain numeric actual values"):
+            ImportDesign(factors=factors, source=path)
+
+    def test_rejects_unknown_actual_category(self, tmp_path):
+        path = tmp_path / "invalid_category.csv"
+        pd.DataFrame({"Catalyst": ["A", "C"]}).to_csv(path, index=False)
+        factors = {"Catalyst": CategoricalFactor(["A", "B"])}
+
+        with pytest.raises(ValueError, match="Unknown levels"):
+            ImportDesign(factors=factors, source=path)
+
+    def test_rejects_unknown_coded_category(self, tmp_path):
+        path = tmp_path / "invalid_code.csv"
+        pd.DataFrame({"Catalyst": [-1.0, 0.25]}).to_csv(path, index=False)
+        factors = {"Catalyst": CategoricalFactor(["A", "B"])}
+
+        with pytest.raises(ValueError, match="Unknown coded levels"):
+            ImportDesign(factors=factors, source=path, coded=True)
+
+    def test_imports_mixture_factors(self, tmp_path):
+        path = tmp_path / "mixture.csv"
+        pd.DataFrame(
+            {
+                "A": [0.2, 0.4],
+                "B": [0.3, 0.2],
+                "C": [0.5, 0.4],
+            }
+        ).to_csv(path, index=False)
+        factors = {
+            name: MixtureFactor(lower_bound=0.0, upper_bound=1.0)
+            for name in ["A", "B", "C"]
+        }
+
+        design = ImportDesign(factors=factors, source=path)
+
+        assert design._coded_design_matrix.equals(design._design_matrix)
+        np.testing.assert_allclose(design._factors["A"].levels, [0.2, 0.4])
+
+    def test_rejects_invalid_mixture_sum(self, tmp_path):
+        path = tmp_path / "invalid_mixture.csv"
+        pd.DataFrame({"A": [0.2], "B": [0.3], "C": [0.4]}).to_csv(
+            path, index=False
         )
-        
-        assert design._design_matrix.shape[1] == 2  # 2 factors
-        assert design._design_matrix.shape[0] == 6  # 6 runs
+        factors = {
+            name: MixtureFactor(lower_bound=0.0, upper_bound=1.0)
+            for name in ["A", "B", "C"]
+        }
 
-    def test_coded_uncoded_dimension_consistency(self, temp_csv_continuous):
-        """Test that coded and uncoded matrices have same dimensions"""
-        design = ImportDesign(
-            vars=['Temperature', 'Pressure', 'Time'],
-            vars_type=['cont', 'cont', 'cont'],
-            file_path=temp_csv_continuous,
-            coded=False
-        )
-        
-        assert design._coded_design_matrix.shape == design._design_matrix.shape
-        assert list(design._coded_design_matrix.columns) == list(design._design_matrix.columns)
+        with pytest.raises(ValueError, match="must sum to 1"):
+            ImportDesign(factors=factors, source=path)
 
-    def test_variable_subset_import(self, temp_csv_continuous):
-        """Test importing subset of variables from file"""
-        # File has Temperature, Pressure, Time but only import Temperature
-        design = ImportDesign(
-            vars=['Temperature'],
-            vars_type=['cont'],
-            file_path=temp_csv_continuous,
-            coded=False
-        )
-        
-        assert design._design_matrix.shape[1] == 1
-        assert 'Temperature' in design._design_matrix.columns
-        assert 'Pressure' not in design._design_matrix.columns
+    def test_build_design_matrix_is_not_available(
+        self, actual_design_file, process_factors
+    ):
+        design = ImportDesign(factors=process_factors, source=actual_design_file)
 
-    # ===============================================================
-    # DECIMAL PRECISION TESTS
-    # ===============================================================
-
-    def test_integer_values_decimal_inference(self):
-        """Test decimal inference for integer values"""
-        data = pd.DataFrame({
-            'Factor': [10, 20, 30, 40, 50]
-        })
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-            data.to_csv(f.name, index=False)
-            temp_path = f.name
-        
-        try:
-            design = ImportDesign(
-                vars=['Factor'],
-                vars_type=['cont'],
-                file_path=temp_path,
-                coded=False
-            )
-            
-            # Integer values should have decimals = 0 or 1
-            factor = design._factors['Factor']
-            assert factor.decimals >= 0
-        finally:
-            os.unlink(temp_path)
-
-    def test_high_precision_decimal_inference(self):
-        """Test decimal inference for high precision values"""
-        data = pd.DataFrame({
-            'Factor': [1.234, 2.567, 3.891]
-        })
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-            data.to_csv(f.name, index=False)
-            temp_path = f.name
-        
-        try:
-            design = ImportDesign(
-                vars=['Factor'],
-                vars_type=['cont'],
-                file_path=temp_path,
-                coded=False
-            )
-            
-            factor = design._factors['Factor']
-            assert factor.decimals == 3
-        finally:
-            os.unlink(temp_path)
-
-    # ===============================================================
-    # BUILD DESIGN MATRIX TEST
-    # ===============================================================
-
-    def test_build_design_matrix_not_implemented(self, temp_csv_continuous):
-        """Test that build_design_matrix raises NotImplementedError"""
-        design = ImportDesign(
-            vars=['Temperature'],
-            vars_type=['cont'],
-            file_path=temp_csv_continuous,
-            coded=False
-        )
-        
         result = design.build_design_matrix()
-        assert isinstance(result, type(NotImplementedError()))
 
-    # ===============================================================
-    # SPECIAL CASES TESTS
-    # ===============================================================
-
-    def test_single_factor_import(self, temp_csv_continuous):
-        """Test importing design with single factor"""
-        design = ImportDesign(
-            vars=['Temperature'],
-            vars_type=['cont'],
-            file_path=temp_csv_continuous,
-            coded=False
-        )
-        
-        assert len(design._factors) == 1
-        assert 'Temperature' in design._factors
-
-    def test_duplicate_values_handling(self):
-        """Test handling of duplicate rows in design"""
-        data = pd.DataFrame({
-            'Factor1': [10, 20, 10, 20, 10],  # Duplicates
-            'Factor2': [1, 2, 1, 2, 1]        # Duplicates
-        })
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-            data.to_csv(f.name, index=False)
-            temp_path = f.name
-        
-        try:
-            design = ImportDesign(
-                vars=['Factor1', 'Factor2'],
-                vars_type=['cont', 'cont'],
-                file_path=temp_path,
-                coded=False
-            )
-            
-            # Design should import all rows including duplicates
-            assert len(design._design_matrix) == 5
-            
-            # But factor levels should only count unique values
-            assert design._factors['Factor1'].n_levels == 2
-            assert design._factors['Factor2'].n_levels == 2
-        finally:
-            os.unlink(temp_path)
-
-    def test_mixed_numeric_string_categorical(self):
-        """Test categorical factor with mixed numeric and string values"""
-        data = pd.DataFrame({
-            'MixedFactor': ['A', 'B', '1', '2', 'A', 'B']
-        })
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-            data.to_csv(f.name, index=False)
-            temp_path = f.name
-        
-        try:
-            design = ImportDesign(
-                vars=['MixedFactor'],
-                vars_type=['cat'],
-                file_path=temp_path,
-                coded=False
-            )
-            
-            factor = design._factors['MixedFactor']
-            # All values should be converted to strings
-            assert all(isinstance(level, str) for level in factor.levels)
-            assert set(factor.levels) == {'1', '2', 'A', 'B'}
-        finally:
-            os.unlink(temp_path)
-
-    def test_large_design_import(self):
-        """Test importing larger design (performance check)"""
-        # Create a larger design
-        np.random.seed(42)
-        data = pd.DataFrame({
-            'F1': np.random.uniform(0, 100, 100),
-            'F2': np.random.uniform(0, 10, 100),
-            'F3': np.random.choice(['A', 'B', 'C'], 100),
-            'F4': np.random.uniform(20, 80, 100)
-        })
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-            data.to_csv(f.name, index=False)
-            temp_path = f.name
-        
-        try:
-            design = ImportDesign(
-                vars=['F1', 'F2', 'F3', 'F4'],
-                vars_type=['cont', 'cont', 'cat', 'cont'],
-                file_path=temp_path,
-                coded=False
-            )
-            
-            assert len(design._design_matrix) == 100
-            assert len(design._factors) == 4
-        finally:
-            os.unlink(temp_path)
+        assert isinstance(result, NotImplementedError)

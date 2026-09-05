@@ -221,12 +221,12 @@ def test_getters_design_and_responses(dummy_design):
     assert dummy_design._design_matrix.iloc[0, 0] == 1
 
 
-def test_get_predicted_responses(dummy_design):
+def test_get_fitted_values(dummy_design):
     dummy_design._response_list = ["y"]
     dummy_design._responses = pd.DataFrame({"y": [1.234, 2.5]})
     dummy_design._mlr_wrapper.results["y"] = DummyResult(y_hat=pd.Series([1.2, 2.6]))
 
-    preds = dummy_design.get_predicted_responses()
+    preds = dummy_design.get_fitted_values()
 
     assert list(preds.columns) == ["y"]
     assert np.allclose(preds["y"], [1.2, 2.6], atol=1e-3)

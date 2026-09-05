@@ -67,8 +67,8 @@ The typical doetools workflow consists of four main steps:
     # 2. Data Collection
     design.export_experiments(responses = ["Yield"],
                               randomize=True,
-                              save_path="design_matrix.xlsx")
-    design.import_responses(file_path="experiments_with_responses.xlsx")
+                              destination="design_matrix.xlsx")
+    design.import_responses(source="experiments_with_responses.xlsx")
 
     # 3. Model Fitting
     design.set_model_terms(terms=ModelTerms())
@@ -88,6 +88,7 @@ Now that you understand the basics:
 
 * Review design-specific pages for your experimental scenario:
 
+  * :doc:`../designs/import_design`
   * :doc:`../designs/process/index`
   * :doc:`../designs/mixture/index`
   * :doc:`../designs/optimal/index`

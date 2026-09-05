@@ -1,16 +1,16 @@
-"""Integration tests for design_wizard workflow.
+"""Integration tests for design_advisor workflow.
 
 Tests the complete workflow from factor definition through design suggestion.
 """
 
 import pytest
-from doetools.utils.design_wizard import suggest_design
+from doetools.utils.design_advisor import suggest_design
 from doetools.utils.factors import ContinuousFactor, CategoricalFactor, MixtureFactor
 
 
 @pytest.mark.integration
-class TestDesignWizardWorkflow:
-    """Integration tests for complete design wizard workflows."""
+class TestDesignAdvisorWorkflow:
+    """Integration tests for complete design-advisor workflows."""
 
     def test_full_screening_workflow(self):
         """Test a complete screening workflow from factor definition to recommendation."""

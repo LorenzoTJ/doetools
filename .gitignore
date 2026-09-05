@@ -57,3 +57,5 @@ extra/
 # --- Supplementary materials ---
 supplementary_materials/
 
+# --- Manual Tests ---
+manual_tests/

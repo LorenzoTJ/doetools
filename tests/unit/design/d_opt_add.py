@@ -120,11 +120,32 @@ class TestImport:
         constructor = inspect.signature(DOptAddDesign)
         generate_cp = inspect.signature(DOptAddDesign.generate_cp)
 
-        assert "factors" in constructor.parameters
+        assert list(constructor.parameters)[:2] == ["factors", "source"]
+        assert "file_path" not in constructor.parameters
         assert "factor_names" not in constructor.parameters
         assert "factor_types" not in constructor.parameters
         assert "coded" not in constructor.parameters
         assert "factor_bounds" not in generate_cp.parameters
+
+    def test_import_accepts_dataframe_defensively(self):
+        source = pd.DataFrame(
+            {
+                "X1": [0.0, 10.0, 5.0],
+                "X2": [0.0, 10.0, 5.0],
+                "Yield": [10.0, 20.0, 15.0],
+            }
+        )
+
+        design = DOptAddDesign(
+            factors=process_factors(),
+            source=source,
+            responses=["Yield"],
+        )
+        source.loc[0, "X1"] = 999.0
+        source.loc[0, "Yield"] = 999.0
+
+        assert design._exp_done.loc[0, "X1"] == 0.0
+        assert design._responses.loc[0, "Yield"] == 10.0
 
     def test_import_validates_factor_mapping_and_columns(self, process_file):
         with pytest.raises(ValueError, match="non-empty mapping"):
@@ -321,7 +342,7 @@ class TestComputeAndSelect:
         design.select_design(1)
         output = tmp_path / "augmentation.xlsx"
         design.export_experiments(
-            responses=["Yield"], randomize=False, save_path=output
+            responses=["Yield"], randomize=False, destination=output
         )
         exported = pd.read_excel(output)
         assert exported["Yield"].iloc[:3].tolist() == [10, 20, 30]

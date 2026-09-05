@@ -89,6 +89,16 @@ def test_load_groups_runs_and_getters_return_defensive_copies(tmp_path):
     )
 
 
+def test_load_confirmation_runs_accepts_dataframe_defensively():
+    design = _fitted_process_design()
+    frame = _confirmation_frame()
+
+    design.load_confirmation_runs(source=frame)
+    frame.loc[0, "Yield"] = 999.0
+
+    assert design.get_confirmation_responses().loc[0, "Yield"] == 10.1
+
+
 def test_pimean_matches_independent_statsmodels_calculation(tmp_path):
     design = _fitted_process_design()
     frame = _confirmation_frame()
@@ -347,8 +357,10 @@ def test_confirmation_plots_use_grouped_results(tmp_path):
     design.load_confirmation_runs(path)
     results = design.get_confirmation_results("Yield")
 
-    predicted = design.plot_confirmation_exp_vs_pred("Yield")
-    residuals = design.plot_confirmation_residuals("Yield")
+    predicted = design.plot_confirmation(
+        "Yield", view="observed_vs_predicted"
+    )
+    residuals = design.plot_confirmation("Yield", view="residuals")
 
     assert len(predicted.data) == len(residuals.data) == 2
     assert np.allclose(predicted.data[0].x, results["Observed"])
@@ -359,3 +371,13 @@ def test_confirmation_plots_use_grouped_results(tmp_path):
     assert np.allclose(residuals.data[1].y, 0.0)
     assert "Confirmation" in predicted.layout.title.text
     assert "Observed Mean" in residuals.layout.xaxis.title.text
+
+
+def test_confirmation_plot_rejects_unknown_view(tmp_path):
+    design = _fitted_process_design()
+    path = tmp_path / "confirmation.csv"
+    _confirmation_frame().to_csv(path, index=False)
+    design.load_confirmation_runs(path)
+
+    with pytest.raises(ValueError, match="view must be either"):
+        design.plot_confirmation("Yield", view="unknown")

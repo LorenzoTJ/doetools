@@ -478,7 +478,7 @@ class DesignReportPDF(FPDF):
             model_matrix=model_matrix.copy(deep=True),
             model_terms=model_terms.copy(deep=True),
             responses=responses.copy(deep=True),
-            predictions=self._capture_optional("Predicted responses", self.design.get_predicted_responses),
+            predictions=self._capture_optional("Fitted values", self.design.get_fitted_values),
             vif=self._capture_optional("VIF", self.design.get_vif),
             leverages=self._capture_optional("Leverages", self.design.get_leverages),
             response_conditions=self._capture_optional(

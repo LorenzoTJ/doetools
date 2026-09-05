@@ -768,6 +768,22 @@ class TestResponseConditions:
 #                     Test: Export/Import Experiments
 # =============================================================================
 
+def test_import_responses_accepts_dataframe_defensively(mock_design_ff):
+    design = mock_design_ff
+    design._response_list = ["Yield"]
+    source = pd.DataFrame(
+        {
+            "Exp. Idx": list(reversed(range(9))),
+            "Yield": [float(value) for value in range(9)],
+        }
+    )
+
+    design.import_responses(source=source)
+    source.loc[8, "Yield"] = 999.0
+
+    assert list(design._responses["Yield"]) == list(reversed(range(9)))
+
+
 @pytest.mark.skipif(
     sys.platform == "win32" and "OneDrive" in Path.cwd().parts,
     reason="Excel export/import tests hang intermittently in a Windows/OneDrive checkout",
@@ -783,7 +799,7 @@ class TestExportImport:
         design.export_experiments(
             responses=["Yield", "Purity"],
             randomize=False,
-            save_path=str(output_file),
+            destination=str(output_file),
             coded=False
         )
         
@@ -816,7 +832,7 @@ class TestExportImport:
         design.export_experiments(
             responses=["Yield"],
             randomize=False,
-            save_path=str(output_file),
+            destination=str(output_file),
             coded=True
         )
         
@@ -839,7 +855,7 @@ class TestExportImport:
         design.export_experiments(
             responses=["Yield"],
             randomize=True,
-            save_path=str(output_file),
+            destination=str(output_file),
             coded=False
         )
         
@@ -860,7 +876,7 @@ class TestExportImport:
         design.export_experiments(
             responses=None,
             randomize=False,
-            save_path=str(output_file),
+            destination=str(output_file),
             coded=False
         )
         
@@ -882,7 +898,7 @@ class TestExportImport:
         design.export_experiments(
             responses=["Yield", "Purity"],
             randomize=False,
-            save_path=str(export_file),
+            destination=str(export_file),
             coded=False
         )
         
@@ -893,7 +909,7 @@ class TestExportImport:
         df.to_excel(export_file, index=False)
         
         # Import the responses
-        design.import_responses(str(export_file))
+        design.import_responses(source=str(export_file))
         
         # Verify responses were imported correctly
         assert design._responses is not None
@@ -919,7 +935,7 @@ class TestExportImport:
         design._response_list = ["Yield", "Purity"]
         
         with pytest.raises(ValueError, match="Number of rows"):
-            design.import_responses(str(wrong_file))
+            design.import_responses(source=str(wrong_file))
     
     def test_import_responses_missing_columns(self, mock_design_ff, tmp_path):
         """Test that missing response columns raises error."""
@@ -937,7 +953,7 @@ class TestExportImport:
         design._response_list = ["Yield", "Purity"]
         
         with pytest.raises(ValueError, match="Response columns not found"):
-            design.import_responses(str(missing_file))
+            design.import_responses(source=str(missing_file))
     
     def test_import_responses_reordered(self, mock_design_ff, tmp_path):
         """Test that import correctly handles reordered experiments."""
@@ -949,7 +965,7 @@ class TestExportImport:
         design.export_experiments(
             responses=["Yield"],
             randomize=True,
-            save_path=str(export_file),
+            destination=str(export_file),
             coded=False
         )
         
@@ -967,7 +983,7 @@ class TestExportImport:
         df.to_excel(export_file, index=False)
         
         # Import should reorder by Exp. Idx
-        design.import_responses(str(export_file))
+        design.import_responses(source=str(export_file))
         
         # Verify data is correctly ordered by exp index
         assert design._responses is not None
@@ -1110,7 +1126,7 @@ class TestPrediction:
             "B": [0.0]
         })
         
-        predictions = design.predict(pred_matrix, ["Yield", "Purity"])
+        predictions = design._predict(pred_matrix, ["Yield", "Purity"])
         
         # Verify predictions were generated
         assert predictions is not None
@@ -1132,7 +1148,7 @@ class TestPrediction:
             "B": [0.0, 0.0, 0.0]
         })
         
-        predictions = design.predict(pred_matrix, ["Yield", "Purity"])
+        predictions = design._predict(pred_matrix, ["Yield", "Purity"])
         
         assert predictions.shape == (3, 2)
         assert all(np.isfinite(predictions["Yield"]))
@@ -1147,7 +1163,7 @@ class TestPrediction:
             "B": [-0.5]
         })
         
-        predictions = design.predict(pred_matrix, ["Yield"])
+        predictions = design._predict(pred_matrix, ["Yield"])
         
         assert predictions.shape == (1, 1)
         assert "Yield" in predictions.columns
@@ -1163,7 +1179,7 @@ class TestPrediction:
         })
         
         with pytest.raises(ValueError, match="No MLR model computed"):
-            design.predict(pred_matrix, ["Yield"])
+            design._predict(pred_matrix, ["Yield"])
 
 
 # =============================================================================

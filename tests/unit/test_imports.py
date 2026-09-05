@@ -27,8 +27,14 @@ def test_utils_submodules():
     """Test utils submodule imports."""
     try:
         from doetools.utils import factors
-        from doetools.utils import design_wizard
+        from doetools.utils import design_advisor
         assert factors is not None
-        assert design_wizard is not None
+        assert design_advisor is not None
     except ImportError as e:
         pytest.fail(f"Failed to import utils modules: {e}")
+
+
+def test_graphs_package_exports_only_public_facade():
+    import doetools.graphs as graphs
+
+    assert graphs.__all__ == ["GraphsMixin"]
