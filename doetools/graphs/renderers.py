@@ -3159,7 +3159,7 @@ class _RendererMixin:
         base = self._base_prediction_row()
         grid = pd.DataFrame([base] * len(coded_values))
         grid[factor] = coded_values
-        predictions = self.predict(grid, [response])[response].to_numpy()
+        predictions = self._predict(grid, [response])[response].to_numpy()
         display_values = self._effect_display_values(
             factor, coded_values, coded
         )
@@ -3193,7 +3193,7 @@ class _RendererMixin:
         )
         baseline = self._base_prediction_row()
         baseline_prediction = float(
-            self.predict(pd.DataFrame([baseline]), [response]).iloc[0][response]
+            self._predict(pd.DataFrame([baseline]), [response]).iloc[0][response]
         )
         fig.add_hline(
             y=baseline_prediction,
@@ -3344,7 +3344,7 @@ class _RendererMixin:
             grid = pd.DataFrame([base] * len(x_codes))
             grid[factor1] = x_codes
             grid[factor2] = group_code
-            predictions = self.predict(
+            predictions = self._predict(
                 grid, [response]
             )[response].to_numpy()
             profiles.append(
@@ -3580,7 +3580,7 @@ class _RendererMixin:
                 row.update(dict(zip(mixture_names, mixture)))
                 rows.append(row)
 
-            predictions = self.predict(
+            predictions = self._predict(
                 pd.DataFrame(rows), [response]
             )[response].to_numpy()
             fig.add_trace(
@@ -3604,7 +3604,7 @@ class _RendererMixin:
             )
 
         reference_prediction = float(
-            self.predict(pd.DataFrame([base]), [response]).iloc[0][response]
+            self._predict(pd.DataFrame([base]), [response]).iloc[0][response]
         )
         fig.add_hline(
             y=reference_prediction,

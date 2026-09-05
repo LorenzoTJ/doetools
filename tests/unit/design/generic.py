@@ -1,6 +1,7 @@
 """Tests for importing externally generated experimental designs."""
 
 from collections import OrderedDict
+import inspect
 
 import numpy as np
 import pandas as pd
@@ -40,6 +41,28 @@ def process_factors():
 
 
 class TestImportDesign:
+    def test_public_signature_uses_factors_then_source(self):
+        constructor = inspect.signature(ImportDesign)
+
+        assert list(constructor.parameters)[:2] == ["factors", "source"]
+        assert "file_path" not in constructor.parameters
+
+    def test_accepts_dataframe_defensively(self, process_factors):
+        source = pd.DataFrame(
+            {
+                "Temperature": [20.0, 25.0, 40.0],
+                "Catalyst": ["C", "A", "B"],
+                "Ignored": [1, 2, 3],
+            },
+            index=[10, 20, 30],
+        )
+
+        design = ImportDesign(factors=process_factors, source=source)
+        source.loc[10, "Temperature"] = 999.0
+
+        assert list(design._design_matrix) == ["Temperature", "Catalyst"]
+        assert design._design_matrix.loc[10, "Temperature"] == 20.0
+
     def test_imports_factor_columns_in_mapping_order(
         self, actual_design_file, process_factors
     ):
@@ -50,7 +73,7 @@ class TestImportDesign:
             ]
         )
 
-        design = ImportDesign(factors=factors, file_path=actual_design_file)
+        design = ImportDesign(factors=factors, source=actual_design_file)
 
         assert design._design_type == "Generic"
         assert list(design._design_matrix) == ["Catalyst", "Temperature"]
@@ -59,7 +82,7 @@ class TestImportDesign:
     def test_non_equispaced_continuous_levels_are_preserved(
         self, actual_design_file, process_factors
     ):
-        design = ImportDesign(factors=process_factors, file_path=actual_design_file)
+        design = ImportDesign(factors=process_factors, source=actual_design_file)
         factor = design._factors["Temperature"]
 
         np.testing.assert_array_equal(factor.levels, [20, 25, 40])
@@ -73,7 +96,7 @@ class TestImportDesign:
     def test_categorical_order_and_reference_are_preserved(
         self, actual_design_file, process_factors
     ):
-        design = ImportDesign(factors=process_factors, file_path=actual_design_file)
+        design = ImportDesign(factors=process_factors, source=actual_design_file)
         factor = design._factors["Catalyst"]
 
         assert factor.levels == ["C", "A", "B"]
@@ -90,7 +113,7 @@ class TestImportDesign:
         original = process_factors["Temperature"]
         np.testing.assert_array_equal(original.levels, [20, 30, 40])
 
-        design = ImportDesign(factors=process_factors, file_path=actual_design_file)
+        design = ImportDesign(factors=process_factors, source=actual_design_file)
 
         assert design._factors["Temperature"] is not original
         np.testing.assert_array_equal(original.levels, [20, 30, 40])
@@ -111,7 +134,7 @@ class TestImportDesign:
             "Catalyst": CategoricalFactor(["C", "A", "B"], reference_level="A"),
         }
 
-        design = ImportDesign(factors=factors, file_path=path, coded=True)
+        design = ImportDesign(factors=factors, source=path, coded=True)
 
         np.testing.assert_allclose(
             design._design_matrix["Temperature"], [20.0, 25.0, 40.0]
@@ -128,7 +151,7 @@ class TestImportDesign:
         )
         factors = {"Temperature": ContinuousFactor(3, 20, 40, decimals=2)}
 
-        design = ImportDesign(factors=factors, file_path=path)
+        design = ImportDesign(factors=factors, source=path)
 
         np.testing.assert_allclose(
             design._factors["Temperature"].coded_levels,
@@ -140,7 +163,7 @@ class TestImportDesign:
         pd.DataFrame({"Temperature": [20, 25, 40]}).to_excel(path, index=False)
         factors = {"Temperature": ContinuousFactor(3, 20, 40, decimals=1)}
 
-        design = ImportDesign(factors=factors, file_path=path)
+        design = ImportDesign(factors=factors, source=path)
 
         assert len(design._design_matrix) == 3
 
@@ -157,13 +180,13 @@ class TestImportDesign:
         self, actual_design_file, factors, exception, message
     ):
         with pytest.raises(exception, match=message):
-            ImportDesign(factors=factors, file_path=actual_design_file)
+            ImportDesign(factors=factors, source=actual_design_file)
 
     def test_rejects_missing_factor_columns(self, actual_design_file):
         factors = {"Pressure": ContinuousFactor(2, 1, 2)}
 
         with pytest.raises(ValueError, match="Factor columns not found"):
-            ImportDesign(factors=factors, file_path=actual_design_file)
+            ImportDesign(factors=factors, source=actual_design_file)
 
     def test_rejects_missing_factor_values(self, tmp_path):
         path = tmp_path / "missing.csv"
@@ -171,7 +194,7 @@ class TestImportDesign:
         factors = {"Temperature": ContinuousFactor(3, 20, 40)}
 
         with pytest.raises(ValueError, match="contain missing values"):
-            ImportDesign(factors=factors, file_path=path)
+            ImportDesign(factors=factors, source=path)
 
     def test_rejects_non_numeric_continuous_values(self, tmp_path):
         path = tmp_path / "invalid.csv"
@@ -179,7 +202,7 @@ class TestImportDesign:
         factors = {"Temperature": ContinuousFactor(3, 20, 40)}
 
         with pytest.raises(ValueError, match="must contain numeric actual values"):
-            ImportDesign(factors=factors, file_path=path)
+            ImportDesign(factors=factors, source=path)
 
     def test_rejects_unknown_actual_category(self, tmp_path):
         path = tmp_path / "invalid_category.csv"
@@ -187,7 +210,7 @@ class TestImportDesign:
         factors = {"Catalyst": CategoricalFactor(["A", "B"])}
 
         with pytest.raises(ValueError, match="Unknown levels"):
-            ImportDesign(factors=factors, file_path=path)
+            ImportDesign(factors=factors, source=path)
 
     def test_rejects_unknown_coded_category(self, tmp_path):
         path = tmp_path / "invalid_code.csv"
@@ -195,7 +218,7 @@ class TestImportDesign:
         factors = {"Catalyst": CategoricalFactor(["A", "B"])}
 
         with pytest.raises(ValueError, match="Unknown coded levels"):
-            ImportDesign(factors=factors, file_path=path, coded=True)
+            ImportDesign(factors=factors, source=path, coded=True)
 
     def test_imports_mixture_factors(self, tmp_path):
         path = tmp_path / "mixture.csv"
@@ -211,7 +234,7 @@ class TestImportDesign:
             for name in ["A", "B", "C"]
         }
 
-        design = ImportDesign(factors=factors, file_path=path)
+        design = ImportDesign(factors=factors, source=path)
 
         assert design._coded_design_matrix.equals(design._design_matrix)
         np.testing.assert_allclose(design._factors["A"].levels, [0.2, 0.4])
@@ -227,12 +250,12 @@ class TestImportDesign:
         }
 
         with pytest.raises(ValueError, match="must sum to 1"):
-            ImportDesign(factors=factors, file_path=path)
+            ImportDesign(factors=factors, source=path)
 
     def test_build_design_matrix_is_not_available(
         self, actual_design_file, process_factors
     ):
-        design = ImportDesign(factors=process_factors, file_path=actual_design_file)
+        design = ImportDesign(factors=process_factors, source=actual_design_file)
 
         result = design.build_design_matrix()
 

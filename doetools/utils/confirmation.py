@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
-
 import numpy as np
 import pandas as pd
 from scipy.stats import t
 
+from .external_points import _ExternalPointValidationMixin
 
-class ConfirmationRunsMixin:
+
+class ConfirmationRunsMixin(_ExternalPointValidationMixin):
     """Load confirmation runs and evaluate PIMean prediction intervals."""
 
     def _initialize_confirmation_runs(self) -> None:
@@ -50,218 +50,21 @@ class ConfirmationRunsMixin:
             )
         return actual, coded, responses, setting_ids
 
-    @staticmethod
-    def _numeric_column(series: pd.Series, name: str) -> pd.Series:
-        try:
-            numeric = pd.to_numeric(series, errors="raise").astype(float)
-        except (TypeError, ValueError) as exc:
-            raise ValueError(
-                f"Confirmation column {name!r} must contain numeric values only."
-            ) from exc
-        if not np.isfinite(numeric.to_numpy()).all():
-            raise ValueError(
-                f"Confirmation column {name!r} contains missing or non-finite values."
-            )
-        return numeric
-
-    def _continuous_confirmation_column(
-        self,
-        series: pd.Series,
-        name: str,
-        *,
-        coded: bool,
-    ) -> tuple[pd.Series, pd.Series]:
-        factor = self._factors[name]
-        numeric = self._numeric_column(series, name)
-        lower = float(factor.lower_bound)
-        upper = float(factor.upper_bound)
-        span = upper - lower
-        if np.isclose(span, 0.0):
-            raise ValueError(
-                f"Continuous factor {name!r} has identical lower and upper bounds."
-            )
-        center = (lower + upper) / 2.0
-        decimals = int(getattr(factor, "decimals", 12))
-
-        actual = center + numeric * span / 2.0 if coded else numeric
-        actual = actual.round(decimals)
-
-        design_values = pd.to_numeric(
-            self._design_matrix[name], errors="coerce"
-        ).to_numpy(dtype=float)
-        allowed_lower = min(lower, float(np.nanmin(design_values)))
-        allowed_upper = max(upper, float(np.nanmax(design_values)))
-        tolerance = max(float(getattr(self, "TOLERANCE", 1e-12)), 10.0 ** (-decimals) * 0.5)
-        outside = (actual < allowed_lower - tolerance) | (
-            actual > allowed_upper + tolerance
-        )
-        if outside.any():
-            runs = list(np.flatnonzero(outside.to_numpy()) + 1)
-            raise ValueError(
-                f"Confirmation factor {name!r} is outside the allowed domain "
-                f"[{allowed_lower}, {allowed_upper}] at runs {runs}."
-            )
-
-        coded_values = ((actual - center) * 2.0 / span).astype(float)
-        return actual.astype(float), coded_values
-
-    def _categorical_confirmation_column(
-        self,
-        series: pd.Series,
-        name: str,
-        *,
-        coded: bool,
-    ) -> tuple[pd.Series, pd.Series]:
-        factor = self._factors[name]
-        levels = list(factor.levels)
-        codes = np.asarray(factor.coded_levels, dtype=float)
-
-        if coded:
-            numeric = self._numeric_column(series, name)
-            actual_values: list[Any] = []
-            coded_values: list[float] = []
-            for run, value in enumerate(numeric.to_numpy(dtype=float), start=1):
-                matches = np.flatnonzero(
-                    np.isclose(value, codes, atol=1e-10, rtol=0.0)
-                )
-                if len(matches) != 1:
-                    raise ValueError(
-                        f"Unknown coded level {value!r} for categorical factor "
-                        f"{name!r} at run {run}."
-                    )
-                position = int(matches[0])
-                actual_values.append(levels[position])
-                coded_values.append(float(codes[position]))
-            return (
-                pd.Series(actual_values, index=series.index, name=name),
-                pd.Series(coded_values, index=series.index, name=name),
-            )
-
-        actual_values = []
-        coded_values = []
-        for run, value in enumerate(series, start=1):
-            matches = [index for index, level in enumerate(levels) if value == level]
-            if len(matches) != 1:
-                raise ValueError(
-                    f"Unknown level {value!r} for categorical factor {name!r} "
-                    f"at run {run}. Available levels: {levels}."
-                )
-            position = matches[0]
-            actual_values.append(levels[position])
-            coded_values.append(float(codes[position]))
-        return (
-            pd.Series(actual_values, index=series.index, name=name),
-            pd.Series(coded_values, index=series.index, name=name),
-        )
-
-    def _mixture_confirmation_column(
-        self,
-        series: pd.Series,
-        name: str,
-    ) -> tuple[pd.Series, pd.Series]:
-        factor = self._factors[name]
-        decimals = int(getattr(factor, "decimals", 12))
-        values = self._numeric_column(series, name).round(decimals)
-        tolerance = max(float(getattr(self, "TOLERANCE", 1e-12)), 10.0 ** (-decimals) * 0.5)
-        outside = (values < float(factor.lower_bound) - tolerance) | (
-            values > float(factor.upper_bound) + tolerance
-        )
-        if outside.any():
-            runs = list(np.flatnonzero(outside.to_numpy()) + 1)
-            raise ValueError(
-                f"Confirmation mixture factor {name!r} is outside its bounds "
-                f"at runs {runs}."
-            )
-        return values.astype(float), values.astype(float).copy()
-
-    def _prepare_confirmation_points(
-        self,
-        frame: pd.DataFrame,
-        *,
-        coded: bool,
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
-        actual = pd.DataFrame(index=frame.index)
-        coded_points = pd.DataFrame(index=frame.index)
-        mixture_names: list[str] = []
-
-        for name, factor in self._factors.items():
-            if factor.type == "cont":
-                actual[name], coded_points[name] = self._continuous_confirmation_column(
-                    frame[name], name, coded=coded
-                )
-            elif factor.type == "cat":
-                actual[name], coded_points[name] = self._categorical_confirmation_column(
-                    frame[name], name, coded=coded
-                )
-            elif factor.type == "mix":
-                mixture_names.append(name)
-                actual[name], coded_points[name] = self._mixture_confirmation_column(
-                    frame[name], name
-                )
-            else:
-                raise ValueError(f"Unsupported factor type {factor.type!r} for {name!r}.")
-
-        if mixture_names:
-            decimals = [int(getattr(self._factors[name], "decimals", 12)) for name in mixture_names]
-            tolerance = max(
-                float(getattr(self, "TOLERANCE", 1e-12)),
-                sum(10.0 ** (-value) * 0.5 for value in decimals),
-            )
-            totals = actual[mixture_names].sum(axis=1).to_numpy(dtype=float)
-            invalid = ~np.isclose(totals, 1.0, atol=tolerance, rtol=0.0)
-            if invalid.any():
-                runs = list(np.flatnonzero(invalid) + 1)
-                raise ValueError(
-                    "Confirmation mixture components must sum to 1 at every run; "
-                    f"invalid runs: {runs}."
-                )
-
-        self._validate_confirmation_domain_filters(actual)
-        return actual.reset_index(drop=True), coded_points.reset_index(drop=True)
-
-    def _validate_confirmation_domain_filters(self, actual: pd.DataFrame) -> None:
-        mask = np.ones(len(actual), dtype=bool)
-        for domain_filter in list(getattr(self, "_domain_filters", []) or []):
-            result = domain_filter(actual.copy(deep=True))
-            if np.isscalar(result):
-                filter_mask = np.full(len(actual), bool(result), dtype=bool)
-            else:
-                if not hasattr(result, "__len__") or len(result) != len(actual):
-                    raise ValueError(
-                        "Each domain filter must return one value per confirmation run."
-                    )
-                values = (
-                    result.reindex(actual.index)
-                    if isinstance(result, pd.Series)
-                    else pd.Series(result, index=actual.index)
-                )
-                if values.ndim != 1:
-                    raise ValueError(
-                        "Each domain filter must return a one-dimensional mask."
-                    )
-                filter_mask = values.fillna(False).to_numpy(dtype=bool)
-            mask &= filter_mask
-        if not mask.all():
-            runs = list(np.flatnonzero(~mask) + 1)
-            raise ValueError(
-                f"Confirmation runs outside the configured domain: {runs}."
-            )
-
     def load_confirmation_runs(
         self,
-        file_path: str | Path,
+        source: str | Path | pd.DataFrame,
         coded: bool = False,
     ) -> None:
         """Load and validate external confirmation runs for a fitted model.
 
         Args:
-            file_path (str | Path): Excel or CSV file containing every factor and
-                fitted-response column.
+            source (str | Path | pd.DataFrame): DataFrame or Excel/CSV file
+                containing every factor and fitted-response column.
             coded (bool): Whether process and categorical factor values are coded.
                 Mixture components are unaffected. Defaults to ``False``.
 
         Raises:
-            FileNotFoundError: If ``file_path`` does not exist.
+            FileNotFoundError: If a supplied path does not exist.
             TypeError: If ``coded`` is not Boolean.
             ValueError: If no MLR model has been fitted or the file contains
                 missing, duplicate, nonnumeric, or out-of-domain data.
@@ -273,12 +76,12 @@ class ConfirmationRunsMixin:
         if not isinstance(coded, bool):
             raise TypeError("coded must be a boolean.")
         fitted_results = self._require_confirmation_model()
-        frame = self.upload_file(file_path)
+        frame = self.upload_file(source)
         if not isinstance(frame, pd.DataFrame) or frame.empty:
-            raise ValueError("The confirmation-runs file must contain at least one row.")
+            raise ValueError("The confirmation-runs source must contain at least one row.")
         if frame.columns.has_duplicates:
             duplicates = list(frame.columns[frame.columns.duplicated()].unique())
-            raise ValueError(f"Confirmation-runs file contains duplicate columns: {duplicates}.")
+            raise ValueError(f"Confirmation-runs source contains duplicate columns: {duplicates}.")
 
         factor_names = list(self._factors)
         response_names = list(fitted_results)
@@ -286,20 +89,27 @@ class ConfirmationRunsMixin:
         missing_responses = [name for name in response_names if name not in frame.columns]
         if missing_factors:
             raise ValueError(
-                f"Factor columns not found in confirmation file: {missing_factors}."
+                f"Factor columns not found in confirmation source: {missing_factors}."
             )
         if missing_responses:
             raise ValueError(
-                f"Response columns not found in confirmation file: {missing_responses}."
+                f"Response columns not found in confirmation source: {missing_responses}."
             )
 
         # Build every object locally so a failed load cannot alter existing state.
-        actual, coded_points = self._prepare_confirmation_points(
-            frame[factor_names].copy(), coded=coded
+        actual, coded_points = self._prepare_external_points(
+            frame[factor_names].copy(),
+            coded=coded,
+            context="Confirmation",
+            row_label="runs",
         )
+        actual = actual.reset_index(drop=True)
+        coded_points = coded_points.reset_index(drop=True)
         responses = pd.DataFrame(index=frame.index)
         for name in response_names:
-            responses[name] = self._numeric_column(frame[name], name)
+            responses[name] = self._numeric_external_column(
+                frame[name], name, context="Confirmation"
+            )
         responses = responses.reset_index(drop=True)
 
         metadata_columns = [

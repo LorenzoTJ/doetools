@@ -1,4 +1,5 @@
 from abc import ABC
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Union  # noqa: UP035
 
 import numpy as np
@@ -6,12 +7,19 @@ import pandas as pd
 
 from .confirmation import ConfirmationRunsMixin
 from .model_spec import ModelSpec, ModelTerms, compile_model_spec
+from .prediction import PredictionPointsMixin
 from .regression import RegressionAnalyzer, RegressionWrapper
 from .summary import DesignSummaryMixin
 from .upload import FileUploaderMixin
 
 
-class Design(ABC, FileUploaderMixin, DesignSummaryMixin, ConfirmationRunsMixin):
+class Design(
+    ABC,
+    FileUploaderMixin,
+    DesignSummaryMixin,
+    ConfirmationRunsMixin,
+    PredictionPointsMixin,
+):
   
   """
   Abstract base class for experimental design of experiments (DoE).
@@ -100,6 +108,9 @@ class Design(ABC, FileUploaderMixin, DesignSummaryMixin, ConfirmationRunsMixin):
 
     # ------------------------ Confirmation Runs ---------------------------- #
     self._initialize_confirmation_runs()
+
+    # ------------------------- Prediction Points --------------------------- #
+    self._initialize_prediction_points()
 
   def set_domain_filters(
       self,
@@ -901,7 +912,7 @@ class Design(ABC, FileUploaderMixin, DesignSummaryMixin, ConfirmationRunsMixin):
   def export_experiments(self,
                         responses: Optional[List[str]] = None,
                         randomize: bool = True,
-                        save_path: str = "design_matrix.xlsx",
+                        destination: str | Path = "design_matrix.xlsx",
                         coded: bool = False) -> None:
     """
     Export the experimental design to an Excel file for laboratory execution.
@@ -917,7 +928,7 @@ class Design(ABC, FileUploaderMixin, DesignSummaryMixin, ConfirmationRunsMixin):
             Defaults to ``None``.
         randomize (bool): Whether to randomize the execution order. Defaults to
             ``True``.
-        save_path (str): Destination Excel workbook path. CSV export is not
+        destination (str | Path): Destination Excel workbook path. CSV export is not
             supported. Defaults to ``"design_matrix.xlsx"``.
         coded (bool): If ``True``, export coded factor values. If ``False``, export
             values in the original experimental units. Defaults to ``False``.
@@ -953,9 +964,9 @@ class Design(ABC, FileUploaderMixin, DesignSummaryMixin, ConfirmationRunsMixin):
       d_matrix = d_matrix.sort_values(by=self.EXP_ORDER_COL)
     else:
       d_matrix.insert(0, self.EXP_ORDER_COL, d_matrix.index)
-    d_matrix.to_excel(save_path, index=False)
+    d_matrix.to_excel(destination, index=False)
 
-  def import_responses(self, file_path: str) -> None:
+  def import_responses(self, source: str | Path | pd.DataFrame) -> None:
     """
     Import experimental response data from a file.
 
@@ -964,12 +975,13 @@ class Design(ABC, FileUploaderMixin, DesignSummaryMixin, ConfirmationRunsMixin):
     ``responses`` list; those names determine which columns are imported.
 
     Args:
-        file_path (str): Path to the completed results file in Excel or CSV format.
+        source (str | Path | pd.DataFrame): Completed results as a DataFrame or
+            an Excel/CSV file path.
 
     Raises:
         ValueError: If the number of rows does not match the design or expected
             response columns are missing.
-        FileNotFoundError: If ``file_path`` does not exist.
+        FileNotFoundError: If a supplied path does not exist.
 
     Notes:
         The results file must retain ``Exp. Idx`` and every response column supplied
@@ -979,17 +991,17 @@ class Design(ABC, FileUploaderMixin, DesignSummaryMixin, ConfirmationRunsMixin):
         metadata when present but does not determine response matching.
     """
 
-    md_matrix = self.upload_file(file_path)
+    md_matrix = self.upload_file(source)
     # Sort values by the exp index -> reorder
     md_matrix = md_matrix.sort_values(by=self.EXP_IDX_COL).reset_index(drop=True)
             
     if md_matrix.shape[0] != self._coded_design_matrix.shape[0]:
-      raise ValueError("Number of rows in the uploaded file must match the number of experiments")
+      raise ValueError("Number of rows in the response source must match the number of experiments")
     
     # Validate response columns exist in the uploaded file
     missing_responses = [r for r in self._response_list if r not in md_matrix.columns]
     if missing_responses:
-      raise ValueError(f"Response columns not found in file: {missing_responses}. Available columns: {list(md_matrix.columns)}")
+      raise ValueError(f"Response columns not found in source: {missing_responses}. Available columns: {list(md_matrix.columns)}")
     
     metadata_columns = [
       column
@@ -1021,7 +1033,7 @@ class Design(ABC, FileUploaderMixin, DesignSummaryMixin, ConfirmationRunsMixin):
 
     Notes:
         Call :meth:`set_model_terms` and :meth:`import_responses` before fitting.
-        The fitted models are then available to :meth:`predict`, summary getters,
+        The fitted models are then available to prediction and summary getters,
         and model-based plots.
     """
     
@@ -1035,12 +1047,12 @@ class Design(ABC, FileUploaderMixin, DesignSummaryMixin, ConfirmationRunsMixin):
 
   # ---------------------------- MLR Model Prediction ----------------------------- #
   
-  def predict(self,
-              matrix_to_pred: pd.DataFrame,
-              responses) -> pd.DataFrame:
+  def _predict(self,
+               matrix_to_pred: pd.DataFrame,
+               responses) -> pd.DataFrame:
     
     """
-    Predict response values at new design points using fitted models.
+    Predict response values at coded design points for internal consumers.
 
     Builds the configured model terms for each supplied point and returns point
     predictions from the fitted models.
@@ -1059,8 +1071,8 @@ class Design(ABC, FileUploaderMixin, DesignSummaryMixin, ConfirmationRunsMixin):
         ValueError: If no MLR model has been computed.
 
     Notes:
-        This method returns point predictions only; it does not calculate confidence
-        or prediction intervals.
+        This private helper returns point predictions only; user-facing predictions
+        are provided by ``get_prediction_results``.
     """
     
     if self._mlr_wrapper is None:

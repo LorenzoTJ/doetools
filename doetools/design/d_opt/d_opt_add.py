@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Collection, Mapping
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -38,8 +39,8 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin, ParetoMixin)
         factors (Mapping[str, object]): Mapping of names to
             ``ContinuousFactor``, ``CategoricalFactor``, or ``MixtureFactor``
             objects. These factors define the candidate domain and coding.
-        file_path (str): CSV or Excel file containing existing factor values in
-            actual units.
+        source (str | Path | pd.DataFrame): DataFrame or CSV/Excel file containing
+            existing factor values in actual units.
         responses (list[str] | None, optional): Existing response columns to
             retain for later export. Defaults to ``None``.
 
@@ -58,25 +59,25 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin, ParetoMixin)
     def __init__(
         self,
         factors: Mapping[str, object],
-        file_path: str,
+        source: str | Path | pd.DataFrame,
         responses: list[str] | None = None,
     ) -> None:
         super().__init__()
         self._factors = self._validate_factors(factors)
         self._factor_names = list(self._factors)
 
-        data = self.upload_file(file_path)
+        data = self.upload_file(source)
         missing = [name for name in self._factor_names if name not in data]
         if missing:
             raise ValueError(
-                "Factor columns not found in the imported file: "
+                "Factor columns not found in the imported source: "
                 + ", ".join(missing)
             )
         if responses is not None:
             missing_responses = [name for name in responses if name not in data]
             if missing_responses:
                 raise ValueError(
-                    "Response columns not found in the imported file: "
+                    "Response columns not found in the imported source: "
                     + ", ".join(missing_responses)
                 )
         if self.EXP_IDX_COL in data:
@@ -531,7 +532,7 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin, ParetoMixin)
         self,
         responses: list[str] | None = None,
         randomize: bool = True,
-        save_path: str = "design_matrix.xlsx",
+        destination: str | Path = "design_matrix.xlsx",
         coded: bool = False,
     ) -> None:
         """Export retained existing and selected additional experiments.
@@ -543,7 +544,7 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin, ParetoMixin)
                 to ``None``.
             randomize (bool, optional): Randomize exported execution order.
                 Defaults to ``True``.
-            save_path (str, optional): Destination Excel path. Defaults to
+            destination (str | Path, optional): Destination Excel path. Defaults to
                 ``"design_matrix.xlsx"``.
             coded (bool, optional): Export coded rather than actual factor values.
                 Defaults to ``False``.
@@ -576,7 +577,7 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin, ParetoMixin)
             matrix = matrix.sort_values(self.EXP_ORDER_COL)
         else:
             matrix.insert(0, self.EXP_ORDER_COL, matrix.index)
-        matrix.to_excel(save_path, index=False)
+        matrix.to_excel(destination, index=False)
 
     @property
     def log_det(self) -> pd.DataFrame | None:

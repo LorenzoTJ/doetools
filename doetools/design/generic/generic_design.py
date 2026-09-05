@@ -1,4 +1,4 @@
-"""Import an existing experimental design from a tabular file."""
+"""Import an existing experimental design from tabular data."""
 
 from collections.abc import Mapping
 from copy import deepcopy
@@ -22,16 +22,16 @@ Factor = ContinuousFactor | CategoricalFactor | MixtureFactor
 
 
 class ImportDesign(Design, GraphsMixin, FileUploaderMixin, ParetoMixin):
-    """Import and validate an experimental design from a CSV or Excel file.
+    """Import and validate an experimental design from a DataFrame or file.
 
     Parameters
     ----------
     factors : mapping of str to factor
-        Factor definitions keyed by the corresponding file-column names. The
+        Factor definitions keyed by the corresponding source-column names. The
         definitions provide the coding bounds for continuous factors and the
         declared order of categorical levels.
-    file_path : str or pathlib.Path
-        CSV or Excel file containing the experimental design.
+    source : str, pathlib.Path, or pandas.DataFrame
+        DataFrame or CSV/Excel file containing the experimental design.
     coded : bool, optional
         If True, factor columns contain coded values. If False, the columns
         contain values in experimental units. Default is False.
@@ -40,7 +40,7 @@ class ImportDesign(Design, GraphsMixin, FileUploaderMixin, ParetoMixin):
     -----
     Continuous levels do not need to be equally spaced. After import, levels,
     coded_levels, and n_levels are synchronized with the distinct points
-    observed in the file. The supplied lower and upper bounds continue to
+    observed in the source. The supplied lower and upper bounds continue to
     define the linear coding transformation, so axial points may legitimately
     have coded values outside [-1, 1].
     """
@@ -48,7 +48,7 @@ class ImportDesign(Design, GraphsMixin, FileUploaderMixin, ParetoMixin):
     def __init__(
         self,
         factors: Mapping[str, Factor],
-        file_path: str | Path,
+        source: str | Path | pd.DataFrame,
         *,
         coded: bool = False,
     ):
@@ -58,12 +58,12 @@ class ImportDesign(Design, GraphsMixin, FileUploaderMixin, ParetoMixin):
         if not isinstance(coded, bool):
             raise TypeError("coded must be a boolean")
 
-        frame = self.upload_file(file_path)
+        frame = self.upload_file(source)
         factor_names = list(factors)
         missing_columns = [name for name in factor_names if name not in frame.columns]
         if missing_columns:
             raise ValueError(
-                f"Factor columns not found in the file: {missing_columns}. "
+                f"Factor columns not found in the source: {missing_columns}. "
                 f"Available columns: {list(frame.columns)}"
             )
 
