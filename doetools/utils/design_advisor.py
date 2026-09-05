@@ -288,7 +288,7 @@ def _min_runs_fractional(k: int, resolution: int) -> int:
     """
     Calculate minimum runs for 2-level fractional factorial designs.
     
-    Uses wizard-grade sufficient bounds for regular 2-level fractional factorials:
+    Uses conservative sufficient bounds for regular 2-level fractional factorials:
     - Resolution III: N >= k + 1 (rounded to power of 2)
     - Resolution IV:  N >= 2k (rounded to power of 2)
     
