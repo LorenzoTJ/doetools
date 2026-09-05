@@ -47,10 +47,17 @@ listed in [`pyproject.toml`](pyproject.toml).
 
 ## Installation
 
-Install the latest stable release from PyPI:
+Install the latest stable release from PyPI with pip:
 
 ```bash
 python -m pip install doetools
+```
+
+Or add `doetools` to a project managed by
+[`uv`](https://docs.astral.sh/uv/):
+
+```bash
+uv add doetools
 ```
 
 To install the current development version from GitHub:
@@ -59,7 +66,8 @@ To install the current development version from GitHub:
 python -m pip install "git+https://github.com/LorenzoTJ/doetools.git@dev"
 ```
 
-For an editable development installation, see [Development](#development).
+For a local development checkout, see the
+[full installation guide](https://doetools.readthedocs.io/en/latest/getting_started/installation.html#development-installation-from-source).
 
 ## Quick start
 
