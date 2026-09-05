@@ -579,7 +579,7 @@ def test_complete_pdf_smoke_for_d_optimal_augmentation(tmp_path):
             "X1": ContinuousFactor(3, 0.0, 10.0),
             "X2": ContinuousFactor(3, 0.0, 10.0),
         },
-        file_path=str(source),
+        source=str(source),
     )
     design.set_model_terms(ModelTerms(pro_main="all", pro_int2=None, pro_quadratic=None))
     design.generate_cp(
@@ -615,7 +615,7 @@ def test_complete_pdf_smoke_for_imported_design(tmp_path):
             "Temperature": ContinuousFactor(3, 20.0, 80.0),
             "Pressure": ContinuousFactor(3, 1.0, 5.0),
         },
-        file_path=str(source),
+        source=str(source),
     )
     design = _fit_design_for_pdf(
         design,

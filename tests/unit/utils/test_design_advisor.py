@@ -1,10 +1,10 @@
-"""Unit tests for the design_wizard module.
+"""Unit tests for the design_advisor module.
 
 Tests the DesignRecommendation system and suggest_design functionality.
 """
 
 import pytest
-from doetools.utils.design_wizard import (
+from doetools.utils.design_advisor import (
     suggest_design,
     DesignRecommendation,
     FactorAnalyzer,
@@ -122,7 +122,7 @@ class TestFactorAnalyzer:
             fa.validate()
 
 class TestHelperFunctions:
-    """Test helper functions in design_wizard module."""
+    """Test helper functions in design_advisor module."""
 
     def test_next_pow2(self):
         """Test _next_pow2 function."""

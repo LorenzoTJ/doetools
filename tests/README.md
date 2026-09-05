@@ -38,8 +38,8 @@ python -m pytest tests/unit
 python -m pytest tests/integration
 
 # One module or one test
-python -m pytest tests/unit/utils/test_design_wizard.py
-python -m pytest tests/unit/utils/test_design_wizard.py::TestFactorAnalyzer
+python -m pytest tests/unit/utils/test_design_advisor.py
+python -m pytest tests/unit/utils/test_design_advisor.py::TestFactorAnalyzer
 ```
 
 Pytest is configured in `pyproject.toml`. The repository includes a few historical
