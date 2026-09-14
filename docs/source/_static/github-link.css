@@ -1,0 +1,26 @@
+.content-icon-container .github-repository-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-right: 0.5rem;
+  color: var(--color-foreground-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.github-repository-link svg {
+  flex-shrink: 0;
+}
+
+.content-icon-container .github-repository-link:hover {
+  color: var(--color-brand-primary);
+  text-decoration: underline;
+}
+
+.github-repository-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
