@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 authors = [
   { name = "Lorenzo Teja" }
 ]
-license = "MIT"
+license = "GPL-3.0-only"
 license-files = ["LICENSE"]
 keywords = [
   "design of experiments",
