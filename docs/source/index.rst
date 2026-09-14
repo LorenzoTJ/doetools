@@ -72,3 +72,11 @@ To get started with *doetools*, please refer to the following sections:
    plots
    pdf_reports
 
+
+License
+-------
+
+Copyright (c) 2026 Lorenzo Teja.
+
+*doetools* is licensed under the GNU General Public License, version 3 only
+(``GPL-3.0-only``).
