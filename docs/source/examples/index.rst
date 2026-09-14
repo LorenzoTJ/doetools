@@ -5,8 +5,17 @@ This section contains example notebooks that demonstrate the use of *doetools*
 for design and analysis workflows. Each notebook provides a step-by-step
 walkthrough with code and explanations.
 
+Select an example title to read it online, or **Download ZIP** to save its
+notebook and all accompanying files. Extract the ZIP before opening the notebook
+and keep the folder structure intact. Examples in the same folder share a ZIP;
+the D-optimal bundle includes all six notebooks and their accompanying data.
+
+Classical designs
+-----------------
+
 .. toctree::
    :maxdepth: 1
+   :hidden:
    :caption: Classical designs
 
    01_central_composite_2f/01_ccd_2f
@@ -15,8 +24,18 @@ walkthrough with code and explanations.
    04_full_factorial_validation/nasa
    05_mixture_3c/03_mix
 
+* :doc:`01_central_composite_2f/01_ccd_2f` - :download:`Download ZIP </_downloads/01_central_composite_2f.zip>`
+* :doc:`02_full_factorial_3f/2f_ff_design` - :download:`Download ZIP </_downloads/02_full_factorial_3f.zip>`
+* :doc:`03_plackett_burman/pb_design` - :download:`Download ZIP </_downloads/03_plackett_burman.zip>`
+* :doc:`04_full_factorial_validation/nasa` - :download:`Download ZIP </_downloads/04_full_factorial_validation.zip>`
+* :doc:`05_mixture_3c/03_mix` - :download:`Download ZIP </_downloads/05_mixture_3c.zip>`
+
+D-optimal designs
+-----------------
+
 .. toctree::
    :maxdepth: 1
+   :hidden:
    :caption: D-optimal designs
 
    06_d_optimal/d_opt_generic
@@ -27,11 +46,25 @@ walkthrough with code and explanations.
    06_d_optimal/d_opt_process_constrained
    07_d_optimal_addition/d_opt_add_ccd_chromatography
 
+* :doc:`06_d_optimal/d_opt_generic` - :download:`Download ZIP </_downloads/06_d_optimal.zip>`
+* :doc:`06_d_optimal/d_opt_incomplete_model` - :download:`Download ZIP </_downloads/06_d_optimal.zip>`
+* :doc:`06_d_optimal/d_opt_process_mixed_model` - :download:`Download ZIP </_downloads/06_d_optimal.zip>`
+* :doc:`06_d_optimal/d_opt_mix_process` - :download:`Download ZIP </_downloads/06_d_optimal.zip>`
+* :doc:`06_d_optimal/d_opt_pharma_mix_design_with_constraints` - :download:`Download ZIP </_downloads/06_d_optimal.zip>`
+* :doc:`06_d_optimal/d_opt_process_constrained` - :download:`Download ZIP </_downloads/06_d_optimal.zip>`
+* :doc:`07_d_optimal_addition/d_opt_add_ccd_chromatography` - :download:`Download ZIP </_downloads/07_d_optimal_addition.zip>`
+
+Constrained mixtures
+--------------------
+
 .. toctree::
    :maxdepth: 1
+   :hidden:
    :caption: Constrained mixtures
 
    08_constrained_mixture/constrained_mixture_design
+
+* :doc:`08_constrained_mixture/constrained_mixture_design` - :download:`Download ZIP </_downloads/08_constrained_mixture.zip>`
 
 Reference articles
 ------------------

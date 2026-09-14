@@ -2,6 +2,8 @@
 
 import os
 import sys
+from pathlib import Path
+from zipfile import ZIP_DEFLATED, ZipFile
 
 sys.path.insert(0, os.path.abspath('../..'))
 
@@ -28,6 +30,7 @@ templates_path = ['_templates']
 root_doc = 'index'
 language = 'en'
 exclude_patterns = [
+    '_downloads',
     # Auxiliary notebooks kept in the repository but not published in the
     # examples navigation.
     'examples/05_mix_4_comp.ipynb',
@@ -56,10 +59,15 @@ html_theme = 'furo'
 html_logo = "_static/doetools_logo.png"
 html_theme_options = {
     "sidebar_hide_name": True,
+    "source_repository": "https://github.com/LorenzoTJ/doetools/",
+    "source_branch": "main",
+    "source_directory": "docs/source/",
 }
+
 pygments_style = "monokai"  # Use Visual Studio style for syntax highlighting
 
 html_static_path = ['_static']
+html_css_files = ['github-link.css']
 
 # -- Extension configuration -------------------------------------------------
 autodoc_member_order = 'bysource'
@@ -86,3 +94,28 @@ napoleon_use_param = True
 napoleon_use_rtype = True
 napoleon_preprocess_types = True
 napoleon_attr_annotations = True
+
+
+# Build example bundles before Sphinx resolves the index's download links.
+def build_example_archives(app):
+    examples = Path(app.srcdir) / 'examples'
+    destination = Path(app.srcdir) / '_downloads'
+    destination.mkdir(exist_ok=True)
+    for folder in sorted(examples.iterdir()):
+        if not folder.is_dir() or not any(folder.glob('*.ipynb')):
+            continue
+        with ZipFile(destination / f'{folder.name}.zip', 'w', ZIP_DEFLATED) as archive:
+            for path in sorted(folder.rglob('*')):
+                if not path.is_file():
+                    continue
+                relative = path.relative_to(examples)
+                if any(part in {'.ipynb_checkpoints', '__pycache__'} for part in relative.parts):
+                    continue
+                with path.open('rb') as source:
+                    if source.read(100).startswith(b'version https://git-lfs.github.com/spec/v1'):
+                        raise RuntimeError(f'Fetch Git LFS files before building example downloads: {path}')
+                archive.write(path, relative.as_posix())
+
+
+def setup(app):
+    app.connect('builder-inited', build_example_archives)

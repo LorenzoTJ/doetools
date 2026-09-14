@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/LorenzoTJ/doetools/actions/workflows/ci.yml/badge.svg)](https://github.com/LorenzoTJ/doetools/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 
 `doetools` is a Python library for Design of Experiments (DoE). It supports the complete workflow
 from choosing and generating a design to fitting response models, inspecting
@@ -135,6 +135,11 @@ No archival DOI has been assigned yet.
 
 ## License
 
-`doetools` is released under the [MIT License](LICENSE). Third-party packages and
-the publications cited by the documentation remain under their respective
-licenses and terms.
+Copyright (c) 2026 Lorenzo Teja.
+
+`doetools` is released under the [GNU General Public License, version 3 only](LICENSE)
+(`GPL-3.0-only`). This license aligns the project with its GPLv3-licensed
+`doe-toolbox` dependency, used for fractional factorial designs.
+
+Third-party packages and the publications cited by the documentation remain
+under their respective licenses and terms.
