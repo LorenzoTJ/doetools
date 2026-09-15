@@ -8,6 +8,15 @@ where it is compatible with Python's versioning rules.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-09-15
+
+- Modified CHANGELOG 
+- Updated landing page of PyPi
+
+[0.1.4]: https://github.com/LorenzoTJ/doetools/releases/tag/v0.1.4
+
+## [0.1.3] - 2026-09-15
+
 ### Statistical definitions and interval API
 
 - Correct RMSE to use `sqrt(SS_res / n)`. RMSE_CV remains `sqrt(PRESS / n)`.
@@ -22,8 +31,8 @@ where it is compatible with Python's versioning rules.
 - Example migration: `plot_response(..., corrected="residuals")` becomes
   `plot_response(..., interval="confidence", variance_source="residuals")`.
 
+[0.1.3]: https://github.com/LorenzoTJ/doetools/releases/tag/v0.1.3
 
-### Changed
 
 ## [0.1.2] - 2026-09-14
 
@@ -37,8 +46,6 @@ where it is compatible with Python's versioning rules.
 [0.1.2]: https://github.com/LorenzoTJ/doetools/releases/tag/v0.1.2
 
 ## [0.1.1] - 2026-09-05
-
-### Added
 
 - Initial public release of `doetools`.
 - Experimental design generation and design recommendations.
