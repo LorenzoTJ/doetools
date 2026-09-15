@@ -108,7 +108,7 @@ def test_graphs_mixin_exposes_only_the_ten_supported_plot_methods():
     }
 
     assert public_methods == {
-        "plot_confidence_interval",
+        "plot_interval",
         "plot_confirmation",
         "plot_design",
         "plot_diagnostics",
