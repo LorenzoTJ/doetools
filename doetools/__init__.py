@@ -1,6 +1,6 @@
 """Public package interface for :mod:`doetools`."""
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 from .design import (
     BoxBehnkenDesign,
