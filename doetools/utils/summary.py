@@ -183,7 +183,12 @@ class DesignSummaryMixin:
         return self._require_fitted_response(response).coef.copy(deep=True)
 
     def get_anova_summary(self, response: str) -> pd.DataFrame:
-        """Return ANOVA information, adding LOF rows only when available."""
+        """Return ANOVA with SD = sqrt(MS), adding LOF rows when available.
+
+        Only the Residuals row's SD is the residual standard deviation; it uses
+        residual degrees of freedom, unlike RMSE, which uses sample size n.
+        Undefined mean squares have undefined SD values.
+        """
         anova = self._require_fitted_response(response).anova
         required = ("SS_tot", "SS_reg", "SS_res", "df_tot", "df_reg", "df_res", "MS_tot", "MS_reg", "MS_res")
         missing = [key for key in required if key not in anova]
@@ -203,6 +208,7 @@ class DesignSummaryMixin:
                 "df": [anova["df_pe"], anova["df_lof"]],
                 "MS": [anova["MS_pe"], anova["MS_lof"]],
             })], ignore_index=True)
+        result["SD"] = np.sqrt(result["MS"].where(result["MS"] >= 0))
         return result.copy(deep=True)
 
     def get_vif(self) -> pd.DataFrame:

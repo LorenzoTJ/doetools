@@ -343,7 +343,7 @@ class RegressionAnalyzer:
         - R²_adj: Adjusted R² accounting for number of predictors
         - Q²: Predictive R² from leave-one-out cross-validation
         - PRESS: Leave-one-out prediction error sum of squares
-        - RMSE: Root mean squared error
+        - RMSE: Root mean squared error, sqrt(SS_res / n)
         - RMSE_CV: RMSE from cross-validation
 
         Lack-of-fit decomposition (only if replicates exist):
@@ -383,7 +383,7 @@ class RegressionAnalyzer:
         ms_res = float(model.mse_resid) if df_res > 0 and np.isfinite(model.mse_resid) else np.nan
         ms_reg = float(model.mse_model) if df_reg > 0 and np.isfinite(model.mse_model) else np.nan
         ms_tot = ss_tot / df_tot if df_tot > 0 else np.nan
-        rmse = float(np.sqrt(ms_res)) if np.isfinite(ms_res) and ms_res >= 0 else np.nan
+        rmse = float(np.sqrt(ss_res / n_sample))
 
         # ------------------------ Metrics --------------------------- #
         tss_tolerance = np.finfo(float).eps * max(1.0, float(np.dot(y, y))) * n_sample

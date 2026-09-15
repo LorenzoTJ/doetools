@@ -832,6 +832,7 @@ class DesignReportPDF(FPDF):
 
         self._render_optional_table(
             "ANOVA", analysis.anova,
+            description="SD = sqrt(MS). Only the Residuals row reports residual standard deviation; RMSE = sqrt(SS_res / n).",
             transform=lambda data: data.rename(columns={"df": "dof"}),
         )
         self._render_optional_table("Replicate Summary", analysis.replicates)
