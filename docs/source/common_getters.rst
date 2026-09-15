@@ -84,7 +84,7 @@ Quick Reference
      - Loaded prediction factor settings in actual or coded units
      - Prediction points loaded
    * - :meth:`~doetools.utils.prediction.PredictionPointsMixin.get_prediction_results`
-     - Factor settings, prediction, and mean-response confidence limits
+     - Factor settings, prediction, and confidence or prediction limits
      - Fitted model and prediction points
    * - :meth:`~doetools.utils.confirmation.ConfirmationRunsMixin.get_confirmation_points`
      - Loaded confirmation factor settings
@@ -296,7 +296,12 @@ ANOVA Summary
 .. automethod:: doetools.utils.summary.DesignSummaryMixin.get_anova_summary
    :noindex:
 
-Returns ``Source``, ``SS``, ``df``, and ``MS``. The base rows are ``Total``,
+The columns are ``Source``, ``SS``, ``df``, ``MS`` and ``SD``. Every row reports
+``SD = sqrt(MS)``, including Pure Error and Lack of Fit when available. Only the
+Residuals row contains the residual standard deviation. Undefined mean squares
+produce ``NaN`` in SD, including residual SD for saturated models.
+
+Returns ``Source``, ``SS``, ``df``, ``MS``, and ``SD``. The base rows are ``Total``,
 ``Regression``, and ``Residuals``; ``Pure Error`` and ``Lack of Fit`` are appended
 only when the fitted model has the required replicate decomposition.
 
@@ -307,7 +312,10 @@ Metric Summary
    :noindex:
 
 Returns a one-row table containing ``R2``, ``R2_adj``, ``Q2``, ``PRESS``, ``RMSE``,
-and ``RMSE_CV``.
+and ``RMSE_CV``. RMSE is ``sqrt(SS_res / n)`` and RMSE_CV is
+``sqrt(PRESS / n)`` (leave-one-out). The residual standard deviation is instead
+``sqrt(SS_res / df_res)``, where ``df_res = n - rank(X)``; it appears only in
+the ANOVA, not among these quality metrics.
 
 Model F-test
 ^^^^^^^^^^^^
@@ -379,18 +387,20 @@ These getters require points loaded with :meth:`load_prediction_points`.
    :noindex:
 
 The result for one response includes every factor column followed by
-``Predicted``, ``CI Lower``, and ``CI Upper``. Factor settings use actual units by
-default and coded values when ``coded=True``. If the fitted model has no valid
-residual mean square, point predictions are still returned and both confidence
-interval columns are ``NaN``.
+``Predicted``, ``CI Lower``, and ``CI Upper`` by default. Selecting
+``interval="prediction"`` returns ``PI Lower`` and ``PI Upper`` instead.
+``variance_source`` selects ``"residuals"`` or ``"pure_error"`` (valid replicates
+required). Factor settings use actual units by default and coded values when
+``coded=True``. If residual variance cannot be estimated, point predictions
+remain available and the selected limit columns are ``NaN``.
 
 .. code-block:: python
 
    points = design.get_prediction_points(coded=False)
    results = design.get_prediction_results(response="Yield", alpha=0.05)
 
-See :doc:`prediction` for loading, validation, and the confidence-interval
-definition.
+See :doc:`prediction` for loading, validation, and the interval
+definitions.
 
 Confirmation-Run Getters
 ------------------------

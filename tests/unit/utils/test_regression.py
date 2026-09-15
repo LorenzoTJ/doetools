@@ -334,7 +334,7 @@ class TestRegressionCorrectness:
         assert result.anova["df_tot"] == int(reference.df_model + reference.df_resid)
         assert np.isclose(result.metrics["R2"], reference.rsquared)
         assert np.isclose(result.metrics["R2_adj"], reference.rsquared_adj)
-        assert np.isclose(result.metrics["RMSE"], np.sqrt(reference.mse_resid))
+        assert np.isclose(result.metrics["RMSE"], np.sqrt(reference.ssr / len(y)))
 
     def test_rank_deficient_statistics_use_effective_rank(self, analyzer):
         x = np.linspace(-2.0, 2.0, 9)
@@ -414,11 +414,11 @@ class TestRegressionProperties:
         assert np.isclose(result.anova['SS_res'], ss_res_computed, atol=1e-10)
     
     def test_rmse_calculation(self, analyzer, multiple_regression_data):
-        """Test that RMSE = sqrt(MS_res)."""
+        """Test that RMSE uses sample size rather than residual degrees of freedom."""
         X, y = multiple_regression_data
         result = analyzer._fit_single_response(X, y, replicate_groups=[])
         
-        rmse_computed = np.sqrt(result.anova['MS_res'])
+        rmse_computed = np.sqrt(np.mean(result.residuals ** 2))
         
         assert np.isclose(result.metrics['RMSE'], rmse_computed, atol=1e-10)
     
@@ -497,7 +497,7 @@ class TestRegressionEdgeCases:
         )
         assert np.isclose(result.metrics['R2'], 1.0, atol=1e-10)
         assert np.isnan(result.anova['MS_res'])
-        assert np.isnan(result.metrics['RMSE'])
+        assert np.isclose(result.metrics['RMSE'], 0.0, atol=1e-12)
         assert np.isnan(result.metrics['R2_adj'])
 
     def test_model_f_test_undefined_without_required_dof(self, analyzer):

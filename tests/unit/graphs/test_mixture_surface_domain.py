@@ -42,7 +42,7 @@ def test_surface_plot_api_defaults_to_full():
     for method_name in (
         "plot_leverage",
         "plot_response",
-        "plot_confidence_interval",
+        "plot_interval",
     ):
         parameter = inspect.signature(
             getattr(GraphsMixin, method_name)
@@ -91,7 +91,7 @@ def test_allowed_domain_is_propagated_by_all_public_surface_methods():
             resolution=8,
             domain="allowed",
         ),
-        design.plot_confidence_interval(
+        design.plot_interval(
             "A",
             "B",
             "Yield",

@@ -35,7 +35,7 @@ def test_surface_domain_defaults_to_full():
     for method_name in (
         "plot_leverage",
         "plot_response",
-        "plot_confidence_interval",
+        "plot_interval",
     ):
         parameter = inspect.signature(
             getattr(GraphsMixin, method_name)
@@ -58,7 +58,7 @@ def test_old_surface_domain_keywords_are_removed():
     with pytest.raises(TypeError):
         design.plot_response("X1", "X2", "Yield", mixture_domain_mode="experimental")
     with pytest.raises(TypeError):
-        design.plot_confidence_interval(
+        design.plot_interval(
             "X1", "X2", "Yield", surface_domain_mode="experimental"
         )
 
@@ -344,7 +344,7 @@ def test_response_and_confidence_interval_use_filtered_process_slice():
         resolution=11,
         domain="allowed",
     )
-    confidence_figures = design.plot_confidence_interval(
+    confidence_figures = design.plot_interval(
         "X1",
         "X2",
         "Yield",

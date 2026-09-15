@@ -407,6 +407,36 @@ class _RendererMixin:
             return np.nan, np.nan
         return float(finite.min()), float(finite.max())
 
+    @staticmethod
+    def _surface_summary_text(
+        constant_levels: dict | None,
+        response: np.ndarray,
+        response_title: str,
+        second_response: np.ndarray | None = None,
+        second_response_title: str | None = None,
+    ) -> str:
+        """Build the compact constant-level and response-range annotation."""
+        lines = []
+        if constant_levels:
+            lines.extend(
+                ["<b>Constant Levels</b>"]
+                + [f"{key}: {value}" for key, value in constant_levels.items()]
+            )
+
+        for title, values in (
+            (response_title, response),
+            (second_response_title, second_response),
+        ):
+            if title is None or values is None:
+                continue
+            minimum, maximum = _RendererMixin._finite_extrema(values)
+            lines.extend(
+                [f"Max. {title}: {maximum:.3f}", f"Min. {title}: {minimum:.3f}"]
+            )
+
+        prefix = "" if constant_levels else "<br>"
+        return prefix + "<br>".join(lines)
+
     def _add_vertex_annotations(self, fig, A, B, C, texts, font_size=12):
         
         pts = [(A, texts[0], -25, 0), (B, texts[1], 25, 0), (C, texts[2], 0, 15)]
@@ -608,13 +638,15 @@ class _RendererMixin:
         )
         
         # Add constant levels annotation
-        if constant_levels is not None and len(constant_levels) > 0:
-            const_text = "<b>Constant Levels</b><br>" + "<br>".join([f"{k}: {v}" for k, v in constant_levels.items()])
-        else:
-            const_text = ""
-        z_min, z_max = self._finite_extrema(response_plot)
+        summary_text = self._surface_summary_text(
+            constant_levels,
+            response_plot,
+            z_title,
+            second_response_plot,
+            z2_title,
+        )
         fig.add_annotation(
-            text=f"{const_text}<br>Max. {z_title}: {z_max:.3f}<br>Min. {z_title}: {z_min:.3f}",
+            text=summary_text,
             xref="paper", yref="paper",
             x=0.8, y=0.96,
             xanchor="left", yanchor="top",
@@ -859,13 +891,15 @@ class _RendererMixin:
         )
         
         # Add constant levels annotation
-        if constant_levels is not None and len(constant_levels) > 0:
-            const_text = "<b>Constant Levels</b><br>" + "<br>".join([f"{k}: {v}" for k, v in constant_levels.items()])
-        else:
-            const_text = ""
-            
+        summary_text = self._surface_summary_text(
+            constant_levels,
+            Z,
+            z_title,
+            Z2,
+            z2_title,
+        )
         fig.add_annotation(
-            text=f"{const_text}<br>Max. {z_title}: {z1_u:.3f}<br>Min. {z_title}: {z1_l:.3f}",
+            text=summary_text,
             xref="paper", yref="paper",
             x=0.80, y=0.96,
             xanchor="left", yanchor="top",
@@ -1302,13 +1336,15 @@ class _RendererMixin:
             font=dict(size=20, family="Arial", color="black")
         )
         
-        if constant_levels is not None and len(constant_levels) > 0:
-            const_text = "<b>Constant Levels</b><br>" + "<br>".join([f"{k}: {v}" for k, v in constant_levels.items()])
-        else:
-            const_text = ""
-        response_min, response_max = self._finite_extrema(response)
+        summary_text = self._surface_summary_text(
+            constant_levels,
+            response_grid,
+            z_title,
+            second_response_grid,
+            z2_title,
+        )
         fig.add_annotation(
-            text=f"{const_text}<br>Max. {z_title}: {response_max:.3f}<br>Min. {z_title}: {response_min:.3f}",
+            text=summary_text,
             xref="paper", yref="paper",
             x=0.8, y=0.96,
             xanchor="left", yanchor="top",
@@ -1576,13 +1612,15 @@ class _RendererMixin:
                 fig, A2, B2, C2, a_title, b_title, c_title, z0=z_min
             )
 
-        if constant_levels is not None and len(constant_levels) > 0:
-            const_text = "<b>Constant Levels</b><br>" + "<br>".join([f"{k}: {v}" for k, v in constant_levels.items()])
-        else:
-            const_text = ""
-        response_min, response_max = self._finite_extrema(response)
+        summary_text = self._surface_summary_text(
+            constant_levels,
+            Z1,
+            z_title,
+            Z2,
+            z2_title,
+        )
         fig.add_annotation(
-            text=f"{const_text}<br>Max. {z_title}: {response_max:.3f}<br>Min. {z_title}: {response_min:.3f}",
+            text=summary_text,
             xref="paper", yref="paper",
             x=0.8, y=0.96,
             xanchor="left", yanchor="top",

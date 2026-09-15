@@ -36,10 +36,10 @@ provide those workflows.
      - Contour and surface figures.
    * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_response`
      - Explore a fitted response, optionally with a second response,
-       confidence correction, or feasible region.
+       conservative interval correction, or feasible region.
      - Contour and surface figures.
-   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_confidence_interval`
-     - Explore confidence half-width for the fitted mean. Requires a fitted
+   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_interval`
+     - Explore confidence or prediction half-width. Requires a fitted
        model and variance statistics.
      - Contour and surface figures.
    * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_regression_coefficients`
@@ -164,11 +164,14 @@ the limits previously configured with ``set_response_conditions()``; it is
 different from ``domain="allowed"``, which controls which factor combinations
 are drawn.
 
-The optional confidence correction is conservative. The confidence half-width
-is subtracted for responses configured for maximization and added for responses
-configured for minimization, so response conditions are required. The
-``"residuals"`` mode uses residual mean square; ``"replicates"`` uses pure error
-and consequently also requires replicated runs and lack-of-fit statistics.
+Set ``interval="confidence"`` to apply a conservative confidence bound for the
+mean, or ``interval="prediction"`` for one new independent observation. With
+``interval=None`` (the default), the uncorrected fitted mean is plotted.
+The selected half-width is subtracted for maximization and added for minimization,
+so response conditions are required. This applies to both responses and the
+feasible region. ``variance_source="residuals"`` uses residual mean square;
+``variance_source="pure_error"`` uses pure error and its degrees of freedom,
+requiring valid replicated observations. There is no automatic fallback.
 
 .. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_response
 
@@ -181,27 +184,35 @@ and consequently also requires replicated runs and lack-of-fit statistics.
        second_response="Purity",
        constant_levels={"Time": 30.0},
        feasible_region=True,
+       interval="prediction",
+       variance_source="residuals",
        domain="allowed",
    )
 
-Confidence half-width
-^^^^^^^^^^^^^^^^^^^^^
+Interval half-width
+^^^^^^^^^^^^^^^^^^^
 
-This plot shows the confidence half-width of the estimated mean response,
-``t * sqrt(MS * leverage)``. It is not a prediction interval for a future
-observation because no additional observation-error term is included.
-``alpha`` is the significance level, so ``alpha=0.05`` produces a 95% confidence
-level.
+``plot_interval`` shows the half-width, not the full interval
+width. ``interval="confidence"`` (default) uses ``t * sqrt(MS * h)`` for the
+expected mean; ``interval="prediction"`` uses ``t * sqrt(MS * (1 + h))`` for one
+new observation, including its experimental error. ``alpha=0.05`` gives 95%
+pointwise, two-sided coverage, not simultaneous coverage across the surface.
+Both formulas use the selected variance and its degrees of freedom, under an
+adequate OLS model with independent homoscedastic normal errors.
 
-.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_confidence_interval
+These methods replace ``plot_confidence_interval``, ``corrected`` and ``type``
+without aliases. Graphs reject intervals when their variance cannot be estimated.
+
+.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_interval
 
 .. code-block:: python
 
-   contour, surface = design.plot_confidence_interval(
+   contour, surface = design.plot_interval(
        ax1="Temperature",
        ax2="Pressure",
        response="Yield",
-       type="residuals",  # or "replicates"
+       interval="prediction",  # or "confidence" for the mean
+       variance_source="residuals",  # or "pure_error"
    )
 
 Model diagnostics

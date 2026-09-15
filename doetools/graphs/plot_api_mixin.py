@@ -1,4 +1,5 @@
 from typing import Literal
+from doetools.utils.intervals import Interval, VarianceSource, validate_interval_options
 from doetools.graphs.design_plot_builder import DesignPlotOptions, build_design_plot
 from doetools.graphs.renderers import _RendererMixin
 from .data_builder import _PlotDataMixin
@@ -362,7 +363,6 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                         response : str,
                         constant_levels: dict[str, float] = None,
                         second_response: str = None,
-                        corrected : Literal["replicates", "residuals"] = None,
                         feasible_region: bool = False,
                         ax3 : str = None,
                         x_min: float = -1.0,
@@ -373,10 +373,13 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                         alpha : float = 0.05,
                         coded : bool = False,
                         domain: Literal["full", "allowed"] = "full",
+                        *,
+                        interval: Interval | None = None,
+                        variance_source: VarianceSource = "residuals",
                         ):
         """Visualize a fitted response across the design space.
 
-        The surface can include a second response, a conservative confidence
+        The surface can include a second response, a conservative interval
         correction, and the region satisfying configured response conditions.
 
         Args:
@@ -386,10 +389,11 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
             constant_levels (dict[str, float], optional): Actual-unit levels
                 at which to hold all remaining factors.
             second_response (str, optional): Second fitted response to overlay.
-            corrected (str, optional): Confidence correction applied to each
-                prediction. ``"replicates"`` uses pure-error variance and
-                ``"residuals"`` uses residual mean square. Configured response
-                conditions determine the conservative direction.
+            interval (str, optional): None for fitted means (default),
+                "confidence" for a conservative mean-confidence bound, or
+                "prediction" for a conservative bound for one new observation.
+            variance_source (str): "residuals" (default) or "pure_error".
+                Pure error requires valid replicated observations.
             feasible_region (bool): Whether to mark the region satisfying the
                 response conditions configured with
                 :meth:`~doetools.ModelMixin.set_response_conditions`.
@@ -412,14 +416,21 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                 Contour and three-dimensional surface figures.
 
         Notes:
-            A fitted model is required. Any confidence correction requires
+            A fitted model is required. Any interval correction requires
             response conditions; its half-width is subtracted for a response
             being maximized and added for one being minimized. The
-            ``"replicates"`` correction also requires replicate-based
+            ``"pure_error"`` variance source also requires replicate-based
             lack-of-fit statistics. ``feasible_region=True`` likewise requires
             response conditions.
         """
         
+        alpha = validate_interval_options(interval, variance_source, alpha, allow_none=True)
+        responses = [response] if second_response is None else [response, second_response]
+        if interval is not None or feasible_region:
+            conditions = getattr(self, "_response_conditions", {})
+            for name in responses:
+                if name not in conditions or "maximize" not in conditions[name]:
+                    raise ValueError(f"Set response conditions for {name!r} with set_response_conditions first.")
         #1) Check constant levels and Create the grid
         grid_df_coded, coded_constant_levels = self._create_grid(
                                 ax1=ax1,
@@ -437,29 +448,17 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
         responses = [response] if second_response is None else [response, second_response]
         predicted_responses = self._predict(matrix_to_pred=grid_df_coded, responses=responses)
 
-        #4) Correct response if needed
-        if corrected is not None:
-            corrected_resposes = pd.DataFrame()
+        #4) Apply the selected conservative bound to every response.
+        if interval is not None:
+            corrected_responses = pd.DataFrame()
             for resp in responses:
-                if corrected == "replicates":
-                    conf_int = self._calculate_confidence_interval(
-                                                grid_of_points=grid_df_coded,
-                                                response=resp,
-                                                type_of_correction="replicates",
-                                                alpha=alpha
-                                            )
-                elif corrected == "residuals":
-                    conf_int = self._calculate_confidence_interval(
-                                                grid_of_points=grid_df_coded,
-                                                response=resp,
-                                                type_of_correction="residuals",
-                                                alpha=alpha
-                                            )
-                corrected_resposes[resp] = self._add_confidence_interval(
-                                            predicted_response=predicted_responses[resp],
-                                            response=resp,
-                                            conf_int=conf_int
-                                            )
+                half_width = self._calculate_interval(
+                    grid_df_coded, resp, interval=interval,
+                    variance_source=variance_source, alpha=alpha,
+                )
+                corrected_responses[resp] = self._apply_conservative_bound(
+                    predicted_responses[resp], resp, half_width,
+                )
         if ax3 is not None:
             # Decode grid if needed
             grid_df = self._decode_matrix(grid_df_coded) if not coded else grid_df_coded
@@ -480,8 +479,8 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
             for resp in responses:
                 response_values = (
                     predicted_responses[resp].to_numpy()
-                    if corrected is None
-                    else corrected_resposes[resp].to_numpy()
+                    if interval is None
+                    else corrected_responses[resp].to_numpy()
                 )
                 interp_responses[resp] = self._interpolate_mixture_surface(
                     surface_domain,
@@ -492,9 +491,9 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
         if feasible_region:
             if ax3 is None:
                 Z_feasible = self._compute_feasible_region(resp1 = response,
-                                                        response1 = corrected_resposes[response] if corrected is not None else predicted_responses[response],
+                                                        response1 = corrected_responses[response] if interval is not None else predicted_responses[response],
                                                         resp2 = second_response if second_response is not None else None,
-                                                        response2 = corrected_resposes[second_response] if (corrected is not None and second_response is not None) else (predicted_responses[second_response] if second_response is not None else None)
+                                                        response2 = corrected_responses[second_response] if (interval is not None and second_response is not None) else (predicted_responses[second_response] if second_response is not None else None)
                                                         )
                 Z_feasible = Z_feasible.reshape((resolution, resolution))
             else:
@@ -517,7 +516,7 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
             )
             labels = list(grid_df.columns)
             hovertemplate = self._build_hovertemplate(labels, responses, precision=3)
-            customdata = self._build_customdata(grid_df, predicted_responses if corrected is None else corrected_resposes)
+            customdata = self._build_customdata(grid_df, predicted_responses if interval is None else corrected_responses)
             # Extract constant levels in decoded space
             constant_levels = {}
             for name in coded_constant_levels.keys():
@@ -528,11 +527,11 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                                x_title = ax1,
                                y_title = ax2,
                                z_title=response,
-                               response = predicted_responses[response].to_numpy() if corrected is None else corrected_resposes[response].to_numpy(),
+                               response = predicted_responses[response].to_numpy() if interval is None else corrected_responses[response].to_numpy(),
                                constant_levels= constant_levels,
                                hovertemplate = hovertemplate,
                                customdata = customdata,
-                               second_response = predicted_responses[second_response].to_numpy() if (corrected is None and second_response is not None) else (corrected_resposes[second_response].to_numpy() if (corrected is not None and second_response is not None) else None),
+                               second_response = predicted_responses[second_response].to_numpy() if (interval is None and second_response is not None) else (corrected_responses[second_response].to_numpy() if (interval is not None and second_response is not None) else None),
                                z2_title=second_response,
                                feasible_region = Z_feasible if feasible_region else None,
                                process_surface_domain=process_surface_domain)
@@ -542,16 +541,18 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                                x_title = ax1,
                                y_title = ax2,
                                z_title=response,
-                               response = predicted_responses[response].to_numpy() if corrected is None else corrected_resposes[response].to_numpy(),
+                               response = predicted_responses[response].to_numpy() if interval is None else corrected_responses[response].to_numpy(),
                                constant_levels= constant_levels,
                                hovertemplate = hovertemplate,
                                customdata = customdata,
                                feasible_region = feasible_region,
                                z2_title=second_response,
-                               second_response = predicted_responses[second_response].to_numpy() if (corrected is None and second_response is not None) else (corrected_resposes[second_response].to_numpy() if (corrected is not None and second_response is not None) else None),
+                               second_response = predicted_responses[second_response].to_numpy() if (interval is None and second_response is not None) else (corrected_responses[second_response].to_numpy() if (interval is not None and second_response is not None) else None),
                                process_surface_domain=process_surface_domain)
 
-            return fig_cp, fig_surf
+            return self._label_response_titles(
+                (fig_cp, fig_surf), response, second_response
+            )
                     
         else:
             # Create the hovertemplate
@@ -566,7 +567,7 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
             f"{ax1}:0, {ax2}:0, {ax3}:{1-L:.2f}, {other_mix[0]}:{L:.2f}" if L != 0 else f"{ax1}:0, {ax2}:0, {ax3}:1"
             ]  
             # Customdata for hover
-            customdata = self._build_customdata(grid_df, predicted_responses if corrected is None else corrected_resposes)
+            customdata = self._build_customdata(grid_df, predicted_responses if interval is None else corrected_responses)
             # Create the figure
             fig1 = self._render_contour_mixture(
                                             grid_df_scaled = grid_df_scaled,
@@ -594,7 +595,7 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
             fig2 = self._render_surface_mixture(
                                             grid_df_scaled = grid_df_scaled,
                                             grid_df = grid_df,
-                                            response = corrected_resposes[response] if corrected is not None else predicted_responses[response],
+                                            response = corrected_responses[response] if interval is not None else predicted_responses[response],
                                             a_title = ax1,
                                             b_title = ax2,
                                             c_title = ax3,
@@ -602,7 +603,7 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                                             constant_levels= constant_levels,
                                             hovertemplate = hovertemplate,
                                             customdata= customdata,
-                                            second_response = corrected_resposes[second_response] if (corrected is not None and second_response is not None) else (predicted_responses[second_response] if second_response is not None else None),
+                                            second_response = corrected_responses[second_response] if (interval is not None and second_response is not None) else (predicted_responses[second_response] if second_response is not None else None),
                                             z2_title = second_response,
                                             feasible_region= feasible_region,
                                             min = 0,
@@ -610,14 +611,32 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                                             domain=domain,
                                             surface_domain=surface_domain,
                                         )
-            return fig1, fig2
+            return self._label_response_titles((fig1, fig2), response, second_response)
         
-    def plot_confidence_interval(self,
+    @staticmethod
+    def _label_response_titles(figures, response, second_response):
+        """Include both response names in titles when two surfaces are overlaid."""
+        if second_response is None:
+            return figures
+        combined = f"{response} & {second_response}"
+        for figure in figures:
+            for annotation in figure.layout.annotations or ():
+                text = annotation.text or ""
+                annotation.text = text.replace(
+                    f"Plot - {response}</b>", f"Plot - {combined}</b>"
+                )
+            title = figure.layout.title.text
+            if title:
+                figure.layout.title.text = title.replace(
+                    f"Plot - {response}</b>", f"Plot - {combined}</b>"
+                )
+        return figures
+
+    def plot_interval(self,
                         ax1: str,
                         ax2: str,
                         response : str,
                         constant_levels: dict[str, float] = None,
-                        type : Literal["replicates", "residuals"] = "residuals",
                         ax3 : str = None,
                         x_min: float = -1.0,
                         x_max: float = 1.0,
@@ -627,12 +646,14 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                         alpha : float = 0.05,
                         coded : bool = False,
                         domain: Literal["full", "allowed"] = "full",
+                        *,
+                        interval: Interval = "confidence",
+                        variance_source: VarianceSource = "residuals",
                         ):
-        """Visualize the confidence half-width for a fitted mean response.
+        """Visualize a confidence or prediction interval half-width.
 
-        Narrow values indicate greater precision in the estimated mean. This
-        is not a prediction interval for a future observation: the variance
-        expression does not include an additional observation-error term.
+        "confidence" describes uncertainty in the fitted mean; "prediction"
+        additionally includes the error of one new independent observation.
 
         Args:
             ax1 (str): First free factor.
@@ -640,8 +661,9 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
             response (str): Fitted response.
             constant_levels (dict[str, float], optional): Actual-unit levels
                 at which to hold all remaining factors.
-            type (str): Variance estimate. ``"replicates"`` uses pure error;
-                ``"residuals"`` uses residual mean square.
+            interval (str): "confidence" for the mean (default), or
+                "prediction" for one new observation.
+            variance_source (str): "residuals" (default) or "pure_error".
             ax3 (str, optional): Third free mixture component for a ternary
                 plot.
             x_min (float): Lower bound for ``ax1`` in coded units.
@@ -661,11 +683,18 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                 Contour and three-dimensional surface figures.
 
         Notes:
-            The plotted half-width is ``t * sqrt(MS * leverage)``. A fitted
-            model is required; ``type="replicates"`` additionally requires
-            replicate-based lack-of-fit statistics.
+            Half-widths are ``t * sqrt(MS * h)`` for confidence and
+            ``t * sqrt(MS * (1 + h))`` for prediction. The selected variance
+            and its degrees of freedom are used throughout. These are two-sided
+            pointwise intervals under independent homoscedastic normal errors
+            and an adequate fitted model. Pure error requires valid replicates.
         """
         
+        alpha = validate_interval_options(interval, variance_source, alpha)
+        interval_label = (
+            "Conf. Interval" if interval == "confidence" else "Pred. Interval"
+        )
+
         #1) Check constant levels and Create the grid
         grid_df_coded, coded_constant_levels = self._create_grid(
                                 ax1=ax1,
@@ -679,22 +708,11 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                                 y_max=y_max
                                 )
         
-        if type == "replicates":
-            conf_int = self._calculate_confidence_interval(
-                                        grid_of_points=grid_df_coded,
-                                        response=response,
-                                        type_of_correction="replicates",
-                                        alpha=alpha
-                                    )
-            
-        elif type == "residuals":
-            conf_int = self._calculate_confidence_interval(
-                                        grid_of_points=grid_df_coded,
-                                        response=response,
-                                        type_of_correction="residuals",
-                                        alpha=alpha
-                                    )
-        
+        conf_int = self._calculate_interval(
+            grid_df_coded, response, interval=interval,
+            variance_source=variance_source, alpha=alpha,
+        )
+
         if ax3 is None:
             
             grid_df = self._decode_matrix(grid_df_coded) if not coded else grid_df_coded
@@ -707,7 +725,7 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                 domain,
             )
             labels = list(grid_df.columns)
-            hovertemplate = self._build_hovertemplate(labels, ["Conf. Interval"], precision=3)
+            hovertemplate = self._build_hovertemplate(labels, [interval_label], precision=3)
             customdata = grid_df.copy()
             customdata['conf_int'] = conf_int
             customdata = customdata.to_numpy()
@@ -720,7 +738,7 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                                grid = grid_df,
                                x_title = ax1,
                                y_title = ax2,
-                               z_title="Conf. Interval",
+                               z_title=interval_label,
                                response = conf_int,
                                constant_levels= constant_levels,
                                hovertemplate = hovertemplate,
@@ -731,7 +749,7 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                                grid = grid_df,
                                x_title = ax1,
                                y_title = ax2,
-                               z_title="Conf. Interval",
+                               z_title=interval_label,
                                response = conf_int,
                                constant_levels= constant_levels,
                                hovertemplate = hovertemplate,
@@ -762,7 +780,7 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
             )
             # Create the hovertemplate
             labels = list(grid_df.columns)
-            hovertemplate = self._build_hovertemplate(labels, ["conf_int"], precision=3)
+            hovertemplate = self._build_hovertemplate(labels, [interval_label], precision=3)
             # Build vertex text
             other_mix = [f for f in constant_levels.keys() if self._factors[f].type == "mix" and f not in [ax1, ax2, ax3]]
             L = np.sum([constant_levels[f] for f in other_mix]) if len(other_mix) > 0 else 0
@@ -783,7 +801,7 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                                             a_title = ax1,
                                             b_title = ax2,
                                             c_title = ax3,
-                                            z_title = "Conf. Interval",
+                                            z_title = interval_label,
                                             constant_levels = constant_levels,
                                             hovertemplate = hovertemplate,
                                             customdata= customdata,
@@ -804,7 +822,7 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
                                             a_title = ax1,
                                             b_title = ax2,
                                             c_title = ax3,
-                                            z_title = "Conf. Interval",
+                                            z_title = interval_label,
                                             constant_levels= constant_levels,
                                             hovertemplate = hovertemplate,
                                             customdata= customdata,

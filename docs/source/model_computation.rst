@@ -171,6 +171,17 @@ Get model quality metrics (R², Adjusted R², RMSE, etc.).
    
    # Output columns: R2 | R2_adj | Q2 | PRESS | RMSE | RMSE_CV
 
+RMSE uses ``sqrt(SS_res / n)``; RMSE_CV uses ``sqrt(PRESS / n)`` from leave-one-out
+predictions. The residual standard deviation uses ``sqrt(MS_res)`` with
+``df_res = n - rank(X)`` and is reported in the ANOVA's SD column.
+A saturated model still has a training RMSE, although its residual variance
+and residual intervals cannot be estimated.
+
+R2 and Q2 use centered total sum of squares when the fitted model contains a
+constant, and uncentered total sum of squares otherwise. Adjusted R2 uses the
+model's effective rank and residual degrees of freedom. Q2 is
+``1 - PRESS / SS_tot``; a degenerate total sum of squares makes R2/Q2 undefined.
+
 Model F-test
 ^^^^^^^^^^^^^^^^
 
