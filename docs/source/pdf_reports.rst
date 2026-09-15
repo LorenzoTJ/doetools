@@ -66,3 +66,7 @@ The report is organized as follows:
 - **Appendix A** — the design matrix in actual factor units. It uses landscape
   pages and splits wide matrices into column groups while repeating the run
   column.
+
+The ANOVA includes ``SD = sqrt(MS)`` for each source. Only the Residuals row
+contains the residual standard deviation. Model metrics report
+``RMSE = sqrt(SS_res / n)`` separately from this estimate.

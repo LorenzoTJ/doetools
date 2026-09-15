@@ -6,9 +6,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy.stats import t
 
 from .external_points import _ExternalPointValidationMixin
+from .intervals import Interval, VarianceSource, interval_half_width, validate_interval_options
 
 
 class PredictionPointsMixin(_ExternalPointValidationMixin):
@@ -109,8 +109,11 @@ class PredictionPointsMixin(_ExternalPointValidationMixin):
         response: str,
         alpha: float = 0.05,
         coded: bool = False,
+        *,
+        interval: Interval = "confidence",
+        variance_source: VarianceSource = "residuals",
     ) -> pd.DataFrame:
-        """Return point predictions and mean-response confidence intervals.
+        """Return predictions and pointwise confidence or prediction intervals.
 
         Args:
             response (str): Fitted response to predict.
@@ -119,10 +122,15 @@ class PredictionPointsMixin(_ExternalPointValidationMixin):
                 to ``0.05``.
             coded (bool): Whether factor columns in the result use coded values.
                 Defaults to ``False``.
+            interval (str): "confidence" for the expected mean (default), or
+                "prediction" for one new independent observation.
+            variance_source (str): "residuals" (default) or "pure_error".
+                Pure error requires valid replicated observations.
 
         Returns:
             pd.DataFrame: Factor settings followed by ``Predicted``, ``CI Lower``,
-                and ``CI Upper`` columns, with one row per loaded point.
+                and ``CI Upper`` columns for confidence intervals, or ``PI Lower``
+                and ``PI Upper`` for prediction intervals, one row per loaded point.
 
         Raises:
             TypeError: If ``alpha`` is not numeric or ``coded`` is not Boolean.
@@ -130,20 +138,20 @@ class PredictionPointsMixin(_ExternalPointValidationMixin):
                 ``alpha`` is outside the open interval ``(0, 1)``.
 
         Notes:
-            Intervals are pointwise confidence intervals for the expected mean
-            response. They are not prediction intervals for future observations.
+            Half-widths are t * sqrt(MS * h) for the mean and
+            t * sqrt(MS * (1 + h)) for one new observation. The selected
+            variance and its degrees of freedom are used for both terms.
+            These are two-sided pointwise intervals under the OLS assumptions
+            of independent homoscedastic normal errors and an adequate model.
             Results are calculated from the current fitted model on every call.
             If residual degrees of freedom or the residual mean square are
-            unavailable, point predictions are still returned and both confidence
-            interval columns contain ``NaN``.
+            unavailable, point predictions are still returned and both selected
+            interval columns contain ``NaN``. Unavailable pure error raises
+            an explicit error instead of falling back to residual variance.
         """
         if not isinstance(coded, bool):
             raise TypeError("coded must be a boolean.")
-        if isinstance(alpha, bool) or not isinstance(alpha, (int, float, np.number)):
-            raise TypeError("alpha must be a numeric value between 0 and 1.")
-        alpha = float(alpha)
-        if not np.isfinite(alpha) or not 0.0 < alpha < 1.0:
-            raise ValueError("alpha must be between 0 and 1.")
+        alpha = validate_interval_options(interval, variance_source, alpha)
 
         actual, coded_points = self._require_prediction_points()
         fitted_results = self._require_prediction_model()
@@ -155,8 +163,6 @@ class PredictionPointsMixin(_ExternalPointValidationMixin):
 
         fitted = fitted_results[response]
         model = fitted.model
-        df_resid = float(model.df_resid)
-        ms_res = float(fitted.anova.get("MS_res", np.nan))
 
         model_points = self._build_model_matrix(coded_points, self._model_spec)
         expected_columns = list(model.params.index)
@@ -173,29 +179,13 @@ class PredictionPointsMixin(_ExternalPointValidationMixin):
         result = settings.copy(deep=True)
         result["Predicted"] = predictions
 
-        if df_resid <= 0 or not np.isfinite(ms_res) or ms_res < 0:
-            result["CI Lower"] = np.nan
-            result["CI Upper"] = np.nan
-            return result.copy(deep=True)
-
-        covariance = np.asarray(fitted.dispersion_matrix, dtype=float)
-        model_values = model_points.to_numpy(dtype=float)
-        leverages = np.einsum(
-            "ij,jk,ik->i", model_values, covariance, model_values
+        half_width = interval_half_width(
+            fitted, model_points, interval=interval,
+            variance_source=variance_source, alpha=alpha,
         )
-        tolerance = (
-            np.finfo(float).eps
-            * max(1.0, float(np.max(np.abs(leverages))))
-            * 100
-        )
-        if (leverages < -tolerance).any():
-            raise ValueError("Computed prediction leverage contains negative values.")
-        leverages = np.maximum(leverages, 0.0)
-
-        critical = float(t.ppf(1.0 - alpha / 2.0, df_resid))
-        half_width = critical * np.sqrt(ms_res * leverages)
-        result["CI Lower"] = predictions - half_width
-        result["CI Upper"] = predictions + half_width
+        prefix = "CI" if interval == "confidence" else "PI"
+        result[f"{prefix} Lower"] = predictions - half_width
+        result[f"{prefix} Upper"] = predictions + half_width
         return result.copy(deep=True)
 
     def clear_prediction_points(self) -> None:

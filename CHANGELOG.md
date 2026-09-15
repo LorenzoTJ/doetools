@@ -8,6 +8,21 @@ where it is compatible with Python's versioning rules.
 
 ## [Unreleased]
 
+### Statistical definitions and interval API
+
+- Correct RMSE to use `sqrt(SS_res / n)`. RMSE_CV remains `sqrt(PRESS / n)`.
+- Add `SD = sqrt(MS)` to all ANOVA rows; residual SD uses residual degrees of
+  freedom and is not a model quality metric.
+- Replace `plot_confidence_interval` with `plot_interval`. Replace plot options
+  `corrected` and `type` with keyword-only `interval` and `variance_source`;
+  `pure_error` replaces the old `replicates` variance option. No aliases remain.
+- Add confidence intervals for the mean and prediction intervals for one new
+  observation to plots and external prediction tables. Prediction tables use
+  `PI Lower`/`PI Upper` when `interval="prediction"` is selected.
+- Example migration: `plot_response(..., corrected="residuals")` becomes
+  `plot_response(..., interval="confidence", variance_source="residuals")`.
+
+
 ### Changed
 
 ## [0.1.2] - 2026-09-14

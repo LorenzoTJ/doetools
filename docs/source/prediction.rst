@@ -5,7 +5,7 @@ Prediction
 
 Use a fitted MLR model to predict one response at factor settings loaded from a
 CSV or Excel workbook. The points remain stored on the design, while predictions
-and confidence intervals are recalculated from the current model whenever they
+and intervals are recalculated from the current model whenever they
 are requested.
 
 Load prediction points
@@ -47,8 +47,8 @@ Both forms are available as defensive copies:
    actual_points = design.get_prediction_points()
    coded_points = design.get_prediction_points(coded=True)
 
-Calculate predictions and confidence intervals
-----------------------------------------------
+Calculate predictions and intervals
+-----------------------------------
 
 Configure and fit the model with :meth:`set_model_terms` and
 :meth:`compute_mlr_model`, then select one fitted response:
@@ -79,9 +79,29 @@ expected mean response is
    \hat{y}_0 \pm t_{1-\alpha/2,\,df_{res}}
    \sqrt{MS_{res}\,x_0^T(X^TX)^+x_0}.
 
-This interval describes uncertainty in the estimated mean response. It is not a
-prediction interval for an individual future observation and is not adjusted
-simultaneously across multiple loaded points.
+This default, ``interval="confidence"``, describes uncertainty in the mean.
+For one new independent observation, select ``interval="prediction"``:
+
+.. code-block:: python
+
+   results = design.get_prediction_results(
+       "Yield", interval="prediction", variance_source="residuals", alpha=0.05,
+   )
+
+The limit columns are then ``PI Lower`` and ``PI Upper``. Its half-width is
+
+.. math::
+
+   t_{1-\alpha/2,\,df_{res}}\sqrt{MS_{res}(1+h_0)},
+   \qquad h_0 = x_0^T(X^TX)^+x_0.
+
+Both interval types are two-sided and pointwise, not simultaneous across loaded
+points. They assume an adequate OLS model with independent homoscedastic normal
+errors. ``variance_source="pure_error"`` substitutes ``MS_pe`` and ``df_pe``
+throughout, including both contributions of a prediction interval. It requires
+valid replicates; unavailable pure error raises an error instead of silently
+using residual variance. With unavailable residual variance, predictions remain
+available and either pair of limit columns contains ``NaN``.
 
 Clear prediction points
 -----------------------

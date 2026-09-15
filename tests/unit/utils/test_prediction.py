@@ -276,7 +276,8 @@ def test_missing_model_response_and_invalid_arguments_are_clear(tmp_path):
         design.load_prediction_points(source=path, coded=1)
 
 
-def test_saturated_model_returns_predictions_without_confidence_intervals(tmp_path):
+@pytest.mark.parametrize("interval,prefix", [("confidence", "CI"), ("prediction", "PI")])
+def test_saturated_model_returns_predictions_without_confidence_intervals(tmp_path, interval, prefix):
     design = FullFactorialDesign(
         {
             "A": ContinuousFactor(2, 0.0, 1.0),
@@ -298,11 +299,11 @@ def test_saturated_model_returns_predictions_without_confidence_intervals(tmp_pa
     pd.DataFrame({"A": [0.5], "B": [0.5]}).to_csv(path, index=False)
     design.load_prediction_points(path)
 
-    results = design.get_prediction_results("Yield")
+    results = design.get_prediction_results("Yield", interval=interval)
 
     assert np.isfinite(results["Predicted"]).all()
-    assert results["CI Lower"].isna().all()
-    assert results["CI Upper"].isna().all()
+    assert results[f"{prefix} Lower"].isna().all()
+    assert results[f"{prefix} Upper"].isna().all()
 
 
 def test_clear_and_breaking_api_surface(tmp_path):
@@ -320,3 +321,34 @@ def test_clear_and_breaking_api_surface(tmp_path):
     assert not hasattr(design, "predict")
     assert not hasattr(design, "get_predicted_responses")
     assert hasattr(design, "get_fitted_values")
+
+
+@pytest.mark.parametrize("interval,prefix,obs", [("confidence", "CI", False), ("prediction", "PI", True)])
+def test_public_prediction_intervals_match_statsmodels(interval, prefix, obs):
+    design = _fitted_process_design()
+    design.load_prediction_points(_prediction_frame())
+    result = design.get_prediction_results("Yield", interval=interval, alpha=.1)
+    fitted = design._mlr_wrapper.results["Yield"].model
+    points = design._build_model_matrix(design.get_prediction_points(coded=True), design._model_spec)
+    expected = fitted.get_prediction(points).summary_frame(alpha=.1)
+    kind = "obs" if obs else "mean"
+    assert list(result.columns) == ["A", "B", "Predicted", f"{prefix} Lower", f"{prefix} Upper"]
+    np.testing.assert_allclose(result[f"{prefix} Lower"], expected[f"{kind}_ci_lower"])
+    np.testing.assert_allclose(result[f"{prefix} Upper"], expected[f"{kind}_ci_upper"])
+    coded = design.get_prediction_results("Yield", interval=interval, alpha=.1, coded=True)
+    np.testing.assert_allclose(result.iloc[:, -3:], coded.iloc[:, -3:])
+
+
+def test_prediction_pure_error_requires_replicates():
+    design = _fitted_process_design()
+    design.load_prediction_points(_prediction_frame())
+    with pytest.raises(ValueError, match="Pure-error"):
+        design.get_prediction_results("Yield", interval="prediction", variance_source="pure_error")
+
+
+@pytest.mark.parametrize("options", [{"interval": None}, {"interval": "invalid"}, {"variance_source": "replicates"}])
+def test_public_prediction_rejects_invalid_interval_options(options):
+    design = _fitted_process_design()
+    design.load_prediction_points(_prediction_frame())
+    with pytest.raises(ValueError):
+        design.get_prediction_results("Yield", **options)

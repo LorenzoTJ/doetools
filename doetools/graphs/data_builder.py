@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from scipy import stats
+from doetools.utils.intervals import interval_half_width
 from doetools.utils.grid_builder import mixture_grid, rectangular_grid
 
 class _PlotDataMixin:
@@ -80,22 +80,18 @@ class _PlotDataMixin:
         else:
             raise ValueError("Mixture scaler only supports 3 or 4 component mixtures.")
     
-    def _calculate_confidence_interval(self, grid_of_points : pd.DataFrame, response: str, type_of_correction : str, alpha: float = 0.05) -> np.ndarray:
-       
-        # Calculate the leverage
-        leverages = self._compute_leverage(grid_of_points)
-        # Extract mse and d.o.f from the model[response]
-        anova = self._mlr_wrapper.results[response].anova
-        if type_of_correction == "replicates":
-            mse1, dof1 = anova["MS_pe"], anova["df_pe"]
-        elif type_of_correction == "residuals":
-            mse1, dof1 = anova["MS_res"], anova["df_res"]
-        # Calculate the confidence interval
-        std_of_pred = np.sqrt(mse1 * leverages)
-        conf_int = std_of_pred * stats.t.ppf(1-(alpha/2), dof1)
-        return conf_int
-    
-    def _add_confidence_interval(self, predicted_response : pd.Series, response: str, conf_int : np.ndarray) -> pd.Series:
+    def _calculate_interval(self, grid_of_points, response, *, interval,
+                            variance_source, alpha=0.05):
+        results = getattr(getattr(self, "_mlr_wrapper", None), "results", {})
+        if response not in results:
+            raise ValueError(f"No fitted response {response!r}; call compute_mlr_model first.")
+        model_points = self._build_model_matrix(grid_of_points, self._model_spec)
+        return interval_half_width(
+            results[response], model_points, interval=interval,
+            variance_source=variance_source, alpha=alpha, require_estimable=True,
+        )
+
+    def _apply_conservative_bound(self, predicted_response : pd.Series, response: str, conf_int : np.ndarray) -> pd.Series:
         
         if self._response_conditions[response]["maximize"]:
             corrected_response = predicted_response - conf_int

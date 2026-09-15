@@ -37,7 +37,7 @@ Supported Plots
 - **Leverage Plots**: Identify influential points in your design (contour and 3D);
 - **Coefficient Plots**: Visualize model coefficients with confidence intervals;
 - **Residual Analysis**: Analyze the residuals of the fitted model;
-- **Confidence Interval Plots**: Show confidence intervals for predictions;
+- **Interval Plots**: Show confidence half-widths for the mean or prediction half-widths for one new observation;
 - **Response Surfaces**: Contour and 3D surface plots for visualizing response behavior;
 - **Pareto plots**: Identify good compromises for multi-response optimization;
 
