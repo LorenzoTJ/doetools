@@ -42,8 +42,8 @@ The maximum number of experimental runs you can perform. The advisor will:
 * Suggest alternatives if no suitable design exists
 * Indicate when the budget is insufficient and provide guidance
 
-non_rectangular_constraints
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+constraints
+^^^^^^^^^^^
 Set to ``True`` if your feasible region has:
 
 * Coupled constraints (e.g., var1 / var2 < some limit)
@@ -126,7 +126,7 @@ Screen 5 continuous factors with a limited budget:
         phase='screening',
         model_order='linear',
         max_experiments=12,
-        non_rectangular_constraints=False,
+        constraints=False,
         performed_exp=False
     )
 

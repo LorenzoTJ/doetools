@@ -31,7 +31,7 @@ Examples
                                      phase='optimization',
                                      model_order='quadratic',
                                      max_experiments=20,
-                                     non_rectangular_constraints=False,
+                                     constraints=False,
                                      performed_exp=False)
 
 """
@@ -326,7 +326,7 @@ def suggest_design(
     phase: Literal["screening", "optimization"] = "optimization",
     model_order: Optional[Literal["linear", "2FI", "quadratic"]] = None,
     max_experiments: int = None,
-    non_rectangular_constraints: bool = False,
+    constraints: bool = False,
     performed_exp: bool = False,
     print_output: bool = True,
 ) -> List[DesignRecommendation]:
@@ -343,7 +343,10 @@ def suggest_design(
 
     max_experiments : int, optional
   
-    non_rectangular_constraints : bool, default=False
+    constraints : bool, default=False
+        Whether the feasible region includes coupled constraints or forbidden
+        factor combinations that make it non-rectangular. This flag does not
+        accept constraint expressions.
 
     performed_exp : bool, default=False
 
@@ -374,13 +377,13 @@ def suggest_design(
                                                     interactions = interactions,
                                                     max_experiments = max_experiments,
                                                     model_order = model_order,
-                                                    non_rectangular_constraints = non_rectangular_constraints)
+                                                    constraints=constraints)
     elif phase == "optimization":
         recommendations = _suggest_optimization_design(factor_analyzer = factor_analyzer,
                                                        max_experiments = max_experiments,
                                                        performed_exp = performed_exp,
                                                        model_order = model_order,
-                                                       non_rectangular_constraints = non_rectangular_constraints)
+                                                       constraints=constraints)
     else:
         raise ValueError(f"Invalid phase: {phase}. Must be 'screening' or 'optimization'.")
 
@@ -403,7 +406,7 @@ def suggest_design(
         print(f"# Mixture Factors: {factor_analyzer.n_mixture}")
         print(f"# Model Order: {model_order_text}")
         print(f"# Performed Experiments: {'Yes' if performed_exp else 'No'}")
-        print(f"# Non-rectangular Constraints: {'Yes' if non_rectangular_constraints else 'No'}")
+        print(f"# Constraints: {'Yes' if constraints else 'No'}")
         if max_experiments:
             print(f"# Max Experiments: {max_experiments}")
         print(f"{'#' * 100}\n")
@@ -424,7 +427,7 @@ def _suggest_screening_design(
     interactions: bool,
     max_experiments: Optional[int],
     model_order: Optional[str],
-    non_rectangular_constraints: bool
+    constraints: bool
     ) -> List[DesignRecommendation]:
     
     """Route to appropriate screening design recommendations.
@@ -441,7 +444,7 @@ def _suggest_screening_design(
         Budget constraint on number of runs
     model_order : Optional[str]
         Expected model complexity
-    non_rectangular_constraints : bool
+    constraints : bool
         Whether the feasible region has non-rectangular constraints
     
     Returns
@@ -456,10 +459,10 @@ def _suggest_screening_design(
 
     # Process-only screening
     if factor_analyzer.has_process and not factor_analyzer.has_mixture:
-        return _screening_process_only(factor_analyzer, interactions, max_experiments, non_rectangular_constraints)
+        return _screening_process_only(factor_analyzer, interactions, max_experiments, constraints)
     # Mixture-only screening
     elif factor_analyzer.has_mixture and not factor_analyzer.has_process:
-        return _screening_mixture_only(factor_analyzer, max_experiments, non_rectangular_constraints)
+        return _screening_mixture_only(factor_analyzer, max_experiments, constraints)
 
     return []
 
@@ -510,7 +513,7 @@ def _screening_process_only(
     factor_analyzer: FactorAnalyzer,
     interactions: bool,
     max_experiments: Optional[int],
-    non_rectangular_constraints: bool
+    constraints: bool
     ) -> List[DesignRecommendation]:
     
     """
@@ -527,7 +530,7 @@ def _screening_process_only(
         Whether two-factor interactions should be considered
     max_experiments : Optional[int]
         Budget constraint on number of runs
-    non_rectangular_constraints : bool
+    constraints : bool
         Whether the feasible region has non-rectangular constraints
         
     Returns
@@ -553,7 +556,7 @@ def _screening_process_only(
     if has_multilevel_process:
         raise ValueError("Screening designs require all continuous factors to be 2-level (low/high).")
     
-    if non_rectangular_constraints:
+    if constraints:
         return [DesignRecommendation(
             design_name="D-Optimal Screening Design (Constrained Process Domain)",
             n_runs= "Flexible, up to budget",
@@ -747,7 +750,7 @@ def _screening_process_only(
 def _screening_mixture_only(
     factor_analyzer: FactorAnalyzer,
     max_experiments: Optional[int],
-    non_rectangular_constraints : bool,
+    constraints : bool,
 ) -> List[DesignRecommendation]:
     
     """Suggest screening designs for mixture factors only.
@@ -761,7 +764,7 @@ def _screening_mixture_only(
         Analyzed factor structure
     max_experiments : Optional[int]
         Budget constraint on number of runs
-    non_rectangular_constraints : bool
+    constraints : bool
         Whether additional constraints exist beyond component bounds
     
     Returns
@@ -773,7 +776,7 @@ def _screening_mixture_only(
     q = factor_analyzer.n_mixture
     n_runs = (2 ** q) - 1
 
-    if factor_analyzer.has_upper_bounds() or non_rectangular_constraints:
+    if factor_analyzer.has_upper_bounds() or constraints:
         return [DesignRecommendation(
             design_name="D-Optimal Design for Constrained Mixtures",
             n_runs= "Flexible, up to budget",
@@ -838,7 +841,7 @@ def _suggest_optimization_design(
     max_experiments: Optional[int],
     performed_exp: bool,
     model_order: Optional[str],
-    non_rectangular_constraints: bool
+    constraints: bool
     ) -> List[DesignRecommendation]:
     
     """Route to appropriate optimization design recommendations.
@@ -855,7 +858,7 @@ def _suggest_optimization_design(
         Whether prior experiments exist (triggers augmentation)
     model_order : Optional[str]
         Expected model complexity
-    non_rectangular_constraints : bool
+    constraints : bool
         Whether the feasible region has non-rectangular constraints
     
     Returns
@@ -875,7 +878,7 @@ def _suggest_optimization_design(
                                           max_experiments=max_experiments,
                                           model_order=model_order,
                                           performed_exp=performed_exp,
-                                          non_rectangular_constraints=non_rectangular_constraints)
+                                          constraints=constraints)
 
     # Pure process problem
     if factor_analyzer.has_process and not factor_analyzer.has_mixture:
@@ -883,7 +886,7 @@ def _suggest_optimization_design(
                                           max_experiments = max_experiments,
                                           performed_exp=performed_exp,
                                           model_order=model_order,
-                                          non_rectangular_constraints=non_rectangular_constraints)
+                                          constraints=constraints)
 
     return []
 
@@ -959,7 +962,7 @@ def _optimization_mixture_only(
     max_experiments: Optional[int],
     model_order: Optional[str],
     performed_exp : bool,
-    non_rectangular_constraints: bool
+    constraints: bool
     ) -> List[DesignRecommendation]:
     """
     Suggest optimization designs for mixture-only problems.
@@ -977,7 +980,7 @@ def _optimization_mixture_only(
         Expected model complexity ("linear" or "quadratic")
     performed_exp : bool
         Whether prior experiments exist (triggers augmentation)
-    non_rectangular_constraints : bool
+    constraints : bool
         Whether additional constraints exist beyond component bounds
         
     Returns
@@ -999,7 +1002,7 @@ def _optimization_mixture_only(
     elif model_order == "quadratic":
         model_note = ["Quadratic mixture model specified - use simplex lattice with m=2 or m=3."]
     
-    if unrestricted and not non_rectangular_constraints:
+    if unrestricted and not constraints:
         
         if not performed_exp:
             return [DesignRecommendation(
@@ -1101,7 +1104,7 @@ def _optimization_process_only(
     factor_analyzer: FactorAnalyzer,
     max_experiments: Optional[int],
     performed_exp: bool,
-    non_rectangular_constraints: bool,
+    constraints: bool,
     model_order: Optional[str]
 ) -> List[DesignRecommendation]:
     """
@@ -1119,7 +1122,7 @@ def _optimization_process_only(
         Budget constraint on number of runs
     performed_exp : bool
         Whether prior experiments exist (triggers augmentation)
-    non_rectangular_constraints : bool
+    constraints : bool
         Whether the feasible region has non-rectangular constraints
     model_order : Optional[str]
         Expected model complexity ("linear", "2FI", or "quadratic")
@@ -1161,7 +1164,7 @@ def _optimization_process_only(
         
     else:
         
-        if non_rectangular_constraints:
+        if constraints:
             
             recommendations.append(DesignRecommendation(
                 design_name="D-Optimal Design for Constrained Process Domain",
