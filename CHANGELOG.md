@@ -8,6 +8,12 @@ where it is compatible with Python's versioning rules.
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-09-16
+
+- Changed one phrase in the documentation landing page
+
+[0.1.6]: https://github.com/LorenzoTJ/doetools/releases/tag/v0.1.6
+
 ## [0.1.5] - 2026-09-15
 
 - Rename the ``suggest_design`` boolean parameter
