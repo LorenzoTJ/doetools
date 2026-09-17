@@ -100,7 +100,7 @@ def _fitted_mixture_design():
     return design
 
 
-def test_graphs_mixin_exposes_only_the_ten_supported_plot_methods():
+def test_graphs_mixin_exposes_only_the_supported_plot_methods():
     public_methods = {
         name
         for name, value in inspect.getmembers(GraphsMixin, inspect.isfunction)
@@ -116,6 +116,7 @@ def test_graphs_mixin_exposes_only_the_ten_supported_plot_methods():
         "plot_leverage",
         "plot_main_effects",
         "plot_mixture_trace",
+        "plot_pareto_front",
         "plot_regression_coefficients",
         "plot_response",
     }

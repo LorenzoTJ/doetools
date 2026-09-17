@@ -61,7 +61,7 @@ provide those workflows.
    * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_confirmation`
      - Select observed-versus-predicted or residual confirmation diagnostics.
      - One figure for one response.
-   * - :meth:`~doetools.utils.pareto.ParetoMixin.plot_pareto_front`
+   * - :meth:`~doetools.graphs.plot_api_mixin.GraphsMixin.plot_pareto_front`
      - Inspect non-dominated solutions after ``compute_pareto_front()``.
      - One 2D or 3D figure.
    * - :meth:`~doetools.DOptDesign.compute_d_optimal`
@@ -313,18 +313,34 @@ formulas used for validation intervals.
 Pareto-front plots
 ------------------
 
-Call ``compute_pareto_front()`` before plotting. Omitting ``x`` and ``y`` uses
-the first two responses; supply both names to choose another pair. Adding ``z``
-creates a 3D plot. Configured response limits are overlaid on 2D plots.
+Call ``compute_pareto_front()`` before plotting. The candidate grid uses every
+declared process-factor level by default. ``factor_levels`` can select exact
+continuous values in actual units and categorical values from their declared
+levels. Mixture resolution is configured with ``mixture_grid``. Domain filters
+set with ``set_domain_filters()`` remove invalid candidates; response limits do
+not remove candidates and remain reference guides on 2D plots.
 
-.. automethod:: doetools.utils.pareto.ParetoMixin.plot_pareto_front
+Omitting ``x`` and ``y`` uses the first two computed objectives. Adding ``z``
+creates a 3D plot. Domain-valid dominated candidates are shown in grey; pass
+``show_candidates=False`` for a front-only plot.
+
+.. automethod:: doetools.graphs.plot_api_mixin.GraphsMixin.plot_pareto_front
 
 .. code-block:: python
 
-   design.compute_pareto_front()
+   design.compute_pareto_front(
+       responses=["Yield", "Cost", "Purity"],
+       factor_levels={
+           "Temperature": [40, 50, 60],
+           "Catalyst": ["A", "C"],
+       },
+       mixture_grid={"degree": 8},
+   )
+   front = design.get_pareto_front()
    pareto_2d = design.plot_pareto_front(x="Yield", y="Cost")
    pareto_3d = design.plot_pareto_front(
        x="Yield",
        y="Cost",
        z="Purity",
+       show_candidates=False,
    )

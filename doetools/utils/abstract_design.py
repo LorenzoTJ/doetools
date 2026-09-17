@@ -1,12 +1,14 @@
 from abc import ABC
+from numbers import Real
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Literal, Optional, Union  # noqa: UP035
+from typing import Any, Callable, Dict, List, Literal, Optional  # noqa: UP035
 
 import numpy as np
 import pandas as pd
 
 from .confirmation import ConfirmationRunsMixin
 from .model_spec import ModelSpec, ModelTerms, compile_model_spec
+from .pareto import _ParetoAnalysisMixin
 from .prediction import PredictionPointsMixin
 from .regression import RegressionAnalyzer, RegressionWrapper
 from .summary import DesignSummaryMixin
@@ -19,6 +21,7 @@ class Design(
     DesignSummaryMixin,
     ConfirmationRunsMixin,
     PredictionPointsMixin,
+    _ParetoAnalysisMixin,
 ):
   
   """
@@ -112,6 +115,9 @@ class Design(
     # ------------------------- Prediction Points --------------------------- #
     self._initialize_prediction_points()
 
+    # -------------------------- Pareto Analysis ---------------------------- #
+    self._initialize_pareto_analysis()
+
   def set_domain_filters(
       self,
       filters: list[Callable[[pd.DataFrame], pd.Series]] | None,
@@ -123,12 +129,14 @@ class Design(
     """
     if filters is None:
       self._domain_filters = []
+      self._invalidate_pareto_results()
       return
     if not isinstance(filters, (list, tuple)) or not all(
         callable(domain_filter) for domain_filter in filters
     ):
       raise TypeError("filters must be a list of callable functions or None.")
     self._domain_filters = list(filters)
+    self._invalidate_pareto_results()
 
   # ===========================================================================
   #                               Internal Methods
@@ -773,6 +781,7 @@ class Design(
         method again replaces the previous model specification and matrix.
     """
     
+    self._invalidate_pareto_results()
     pro_factors = [name for name, factor in self._factors.items() if factor.type in ["cont", "cat"]]
     mix_factors = [name for name, factor in self._factors.items() if factor.type == "mix"]
 
@@ -783,47 +792,82 @@ class Design(
 
     # Build the model matrix with the specified terms
     self._model_matrix = self._build_model_matrix(self._coded_design_matrix, self._model_spec)
+    self._invalidate_pareto_results()
   
   def set_response_conditions(self,
-                              lower_limits: List[Union[str, bool]],
-                              upper_limits: List[Union[str, bool]],
+                              lower_limits: List[float | None],
+                              upper_limits: List[float | None],
                               maximize: List[bool]) -> None:
     """
     Define optimization criteria for response variables.
 
-    The limits and objective direction are stored per response for Pareto analysis
-    and plots that highlight response constraints. They are not required to fit an
-    MLR model.
+    Objective directions are used by Pareto analysis. Lower and upper limits are
+    reference guides for plots and do not remove Pareto candidates. Conditions
+    are not required to fit an MLR model. Response names must already have been
+    defined, normally by passing ``responses`` to ``export_experiments``.
 
     Args:
-        lower_limits (list[float | bool]): Lower limits in response-list order.
-            Use ``False`` or ``None`` where no lower limit is required.
-        upper_limits (list[float | bool]): Upper limits in response-list order.
-            Use ``False`` or ``None`` where no upper limit is required.
+        lower_limits (list[float | None]): Lower limits in response-list order.
+            Use ``None`` where no lower limit is required.
+        upper_limits (list[float | None]): Upper limits in response-list order.
+            Use ``None`` where no upper limit is required.
         maximize (list[bool]): Whether to maximize (``True``) or minimize
             (``False``) each response.
 
     Raises:
-        ValueError: If a supplied list does not have one entry for every response.
+        ValueError: If a supplied list does not have one entry for every response,
+            a limit is non-finite, or a lower limit exceeds its upper limit.
+        TypeError: If limits are not numeric or ``None``, or directions are not
+            booleans.
 
-    Notes:
-        Response names must already have been defined, normally by passing
-        ``responses`` to :meth:`export_experiments`.
     """
     
     responses = self._response_list
-    # Input checks
+    if not responses:
+      raise ValueError("No responses defined; export experiments with response names first.")
     if len(responses) != len(lower_limits) or len(responses) != len(upper_limits) or len(responses) != len(maximize):
       raise ValueError("The number of conditions must be the same")
-    for i in range(len(responses)):
-      # Initiate the dictionary
-      self._response_conditions[responses[i]] = {}
-      # Set lower limits
-      self._response_conditions[responses[i]]["lower_limit"] = lower_limits[i]
-      # Set upper limits
-      self._response_conditions[responses[i]]["upper_limit"] = upper_limits[i]
-      # Set "maximize" -> True / False
-      self._response_conditions[responses[i]]["maximize"] = maximize[i]
+
+    def validate_limit(value, label: str, response: str) -> float | None:
+      if value is None:
+        return None
+      if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
+        raise TypeError(f"{label} for {response!r} must be numeric or None")
+      numeric = float(value)
+      if not np.isfinite(numeric):
+        raise ValueError(f"{label} for {response!r} must be finite")
+      return numeric
+
+    conditions = {}
+    for response, lower, upper, direction in zip(
+        responses, lower_limits, upper_limits, maximize
+    ):
+      if not isinstance(direction, bool):
+        raise TypeError(f"maximize for {response!r} must be boolean")
+      validated_lower = validate_limit(lower, "lower limit", response)
+      validated_upper = validate_limit(upper, "upper limit", response)
+      if (
+          validated_lower is not None
+          and validated_upper is not None
+          and validated_lower > validated_upper
+      ):
+        raise ValueError(f"Lower limit exceeds upper limit for {response!r}")
+      conditions[response] = {
+          "lower_limit": validated_lower,
+          "upper_limit": validated_upper,
+          "maximize": direction,
+      }
+    previous_directions = {
+        response: condition.get("maximize")
+        for response, condition in self._response_conditions.items()
+    }
+    self._response_conditions = conditions
+    current_directions = {
+        response: condition["maximize"]
+        for response, condition in conditions.items()
+    }
+    if previous_directions != current_directions:
+      self._invalidate_pareto_results()
   
   # ----------------------- Modify Design Methods ---------------------------- #
   
@@ -906,6 +950,7 @@ class Design(
         extra = self._coded_design_matrix.iloc[indices]
         extra = extra.loc[extra.index.repeat(n_replicates)].reset_index(drop=True)
         append_coded_rows(extra)
+    self._invalidate_pareto_results()
       
   # ------------------------ Export / Import Data ---------------------------- #
 
@@ -947,6 +992,7 @@ class Design(
     """
     
     self._response_list = responses
+    self._invalidate_pareto_results()
     # Define which matrix to export (design matrix or raw_design_matrix)
     if coded:
       d_matrix = self._coded_design_matrix.copy()
@@ -1014,6 +1060,7 @@ class Design(
       else None
     )
     self._responses = md_matrix[self._response_list]
+    self._invalidate_pareto_results()
 
 
   # ---------------------------- MLR Model Computation ----------------------------- #
@@ -1044,6 +1091,7 @@ class Design(
     
     replicate_groups = self._group_by_replicates()
     self._mlr_wrapper = self._analyzer.mlr_fit(self._model_matrix, self._responses, replicate_groups)
+    self._invalidate_pareto_results()
 
   # ---------------------------- MLR Model Prediction ----------------------------- #
   

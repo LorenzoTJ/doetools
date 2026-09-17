@@ -189,6 +189,25 @@ displayed as ``"No"``.
    conditions = design.get_response_condition_summary()
    print(conditions)
 
+Pareto Front
+------------
+
+.. automethod:: doetools.utils.abstract_design.Design.get_pareto_front
+
+Call ``compute_pareto_front()`` first. The getter returns a defensive copy of
+the non-dominated, domain-valid candidates with their candidate IDs, factor
+settings, and predicted objective responses. Response limits do not filter this
+table.
+
+.. code-block:: python
+
+   design.compute_pareto_front(
+       responses=["Yield", "Cost"],
+       factor_levels={"Temperature": [40, 50, 60]},
+                      "Pressure": [1, 2, 3]
+   )
+   front = design.get_pareto_front()
+
 Design and Model Matrices
 -------------------------
 

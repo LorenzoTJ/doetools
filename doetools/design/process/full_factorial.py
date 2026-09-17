@@ -5,10 +5,9 @@ import pandas as pd
 # Import mixins and core abstract design class
 from ...graphs import GraphsMixin
 from ...utils import Design
-from ...utils import ParetoMixin    
 
 # Class Definition
-class FullFactorialDesign(Design, GraphsMixin, ParetoMixin):
+class FullFactorialDesign(Design, GraphsMixin):
   r"""
   Full Factorial Design Class.
 
@@ -101,4 +100,3 @@ class FullFactorialDesign(Design, GraphsMixin, ParetoMixin):
   
   
 
-  

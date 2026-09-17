@@ -77,9 +77,10 @@ The :class:`~doetools.ModelTerms` class provides a convenient way to specify mod
 Set Response Condition
 -----------------------
 
-Set optional optimization goals for each response: lower/upper limits and
-maximize/minimize flags. These conditions are not used to fit the MLR model; they
-are used by Pareto analysis and relevant plots.
+Set optional optimization goals for each response: lower/upper reference limits
+and maximize/minimize flags. These conditions are not used to fit the MLR model.
+Pareto analysis uses only the maximize/minimize directions; response limits are
+displayed as plot guides and do not remove Pareto candidates.
 
 .. note::
     Response names must already be defined, normally by exporting with a
@@ -93,8 +94,8 @@ are used by Pareto analysis and relevant plots.
 
    # Maximize yield, minimize cost, target range for purity
    design.set_response_conditions(
-       lower_limits=[70, False, 95],    # 70% min yield, no min cost, 95% min purity
-       upper_limits=[False, 200, 100],  # no max yield, $200 max cost, 100% max purity
+       lower_limits=[70, None, 95],    # 70% min yield, no min cost, 95% min purity
+       upper_limits=[None, 200, 100],  # no max yield, $200 max cost, 100% max purity
        maximize=[True, False, True]     # maximize yield & purity, minimize cost
    )
 
@@ -115,6 +116,30 @@ lack-of-fit calculations when applicable.
 
    # After importing responses and setting model terms
    design.compute_mlr_model()
+
+Compute a Pareto Front
+----------------------
+
+After fitting the response models and assigning an objective direction to each
+selected response, evaluate the models over a deterministic candidate grid.
+``factor_levels`` selects exact continuous and categorical levels. Unspecified
+process factors use all their declared levels. Use ``mixture_grid`` for mixture
+resolution and ``set_domain_filters()`` for non-rectangular factor constraints.
+
+.. automethod:: doetools.utils.abstract_design.Design.compute_pareto_front
+
+.. code-block:: python
+
+   design.compute_pareto_front(
+       responses=["Yield", "Cost"],
+       factor_levels={
+           "Temperature": [40, 50, 60],
+           "Catalyst": ["A", "C"],
+       },
+   )
+
+Response lower and upper limits are not hard constraints in this computation.
+They remain reference guides on the resulting 2D Pareto plot.
 
 Model Statistics
 -----------------

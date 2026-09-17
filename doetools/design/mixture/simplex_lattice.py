@@ -5,11 +5,10 @@ import pandas as pd
 # Import doetools base classes
 from ...utils import Design
 from ...graphs import GraphsMixin
-from ...utils import ParetoMixin
 from ...utils.model_spec import ModelTerms, compile_model_spec
 
 # Initialize Simplex Lattice Design class
-class SimplexLatticeDesign(Design, GraphsMixin, ParetoMixin):
+class SimplexLatticeDesign(Design, GraphsMixin):
     r"""
     Generate a simplex-lattice design for a mixture experiment.
 
@@ -179,6 +178,7 @@ class SimplexLatticeDesign(Design, GraphsMixin, ParetoMixin):
 
         """
         
+        self._invalidate_pareto_results()
         pro_factors = [name for name, factor in self._factors.items() if factor.type in ["cont", "cat"]]
         mix_factors = [name for name, factor in self._factors.items() if factor.type == "mix"]
 
@@ -189,3 +189,4 @@ class SimplexLatticeDesign(Design, GraphsMixin, ParetoMixin):
 
         # Build the model matrix with the specified terms
         self._model_matrix = self._build_model_matrix(self._coded_design_matrix, self._model_spec)
+        self._invalidate_pareto_results()

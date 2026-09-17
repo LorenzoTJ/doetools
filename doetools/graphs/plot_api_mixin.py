@@ -1126,3 +1126,47 @@ class GraphsMixin(_RendererMixin, _PlotDataMixin):
             reference=reference,
             n_points=n_points,
         )
+
+    def plot_pareto_front(
+        self,
+        x: str | None = None,
+        y: str | None = None,
+        z: str | None = None,
+        *,
+        show_candidates: bool = True,
+    ) -> go.Figure:
+        """Plot a previously computed Pareto front in two or three dimensions.
+
+        Domain-valid dominated candidates are shown as context by default.
+        Response limits configured with :meth:`set_response_conditions` are
+        reference guides only and do not affect Pareto membership.
+        """
+        candidates = getattr(self, "_pareto_candidates", None)
+        objectives = getattr(self, "_pareto_objectives", None)
+        if candidates is None or objectives is None:
+            raise ValueError("No Pareto front computed; call compute_pareto_front first.")
+        if not isinstance(show_candidates, bool):
+            raise TypeError("show_candidates must be boolean")
+        if (x is None) != (y is None):
+            raise ValueError("Specify both x and y, or omit both.")
+        if x is None:
+            x, y = objectives[:2]
+
+        axes = [x, y] + ([z] if z is not None else [])
+        if len(set(axes)) != len(axes):
+            raise ValueError("Pareto plot axes must be distinct.")
+        invalid = [axis for axis in axes if axis not in objectives]
+        if invalid:
+            raise ValueError(
+                f"Pareto plot axes must be computed objectives; invalid: {invalid}. "
+                f"Available objectives: {list(objectives)}"
+            )
+
+        return self._render_pareto_front(
+            candidates=candidates,
+            objectives=objectives,
+            x=x,
+            y=y,
+            z=z,
+            show_candidates=show_candidates,
+        )
