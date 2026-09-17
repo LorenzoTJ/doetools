@@ -79,7 +79,7 @@ class TestDesignAdvisorWorkflow:
             phase='optimization',
             model_order='quadratic',
             performed_exp=True,
-            non_rectangular_constraints=True
+            constraints=True
         )
         
         # Verify both return recommendations
@@ -123,7 +123,7 @@ class TestDesignAdvisorWorkflow:
             factors=factors,
             phase='optimization',
             model_order='quadratic',
-            non_rectangular_constraints=True
+            constraints=True
         )
         
         assert len(recommendations) > 0

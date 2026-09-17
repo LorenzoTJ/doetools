@@ -206,7 +206,7 @@ class TestSuggestDesign:
             phase='screening',
             model_order='2FI',
             max_experiments=None,
-            non_rectangular_constraints=True
+            constraints=True
         )
         
         assert len(rec) > 0
@@ -385,7 +385,7 @@ class TestSuggestDesign:
             phase='screening',
             model_order='linear',
             max_experiments=30,
-            non_rectangular_constraints=True
+            constraints=True
         )
         
         assert len(recommendations) > 0
@@ -530,7 +530,7 @@ class TestSuggestDesign:
             phase='optimization',
             model_order='quadratic',
             performed_exp=False,
-            non_rectangular_constraints=True
+            constraints=True
         )
         
         assert len(recommendations) > 0
@@ -546,7 +546,7 @@ class TestSuggestDesign:
             phase='optimization',
             model_order='quadratic',
             performed_exp=True,
-            non_rectangular_constraints=True
+            constraints=True
         )  
         assert len(recommendations) > 0
         # Should suggest Augmentation when constraints are present
