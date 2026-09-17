@@ -8,6 +8,36 @@ where it is compatible with Python's versioning rules.
 
 ## [Unreleased]
 
+- Replace the legacy Pareto mixin API with common design methods:
+  ``compute_pareto_front``, ``get_pareto_front``, and ``plot_pareto_front``.
+  Pareto grids now accept exact continuous and categorical ``factor_levels``,
+  reuse bounded-mixture candidates, enforce persistent domain filters, and keep
+  response limits as plot-only guides. Pareto plots now use the library's shared
+  graph-object styling and can show dominated domain-valid candidates for context.
+
+## [0.1.6] - 2026-09-16
+
+- Changed one phrase in the documentation landing page
+
+[0.1.6]: https://github.com/LorenzoTJ/doetools/releases/tag/v0.1.6
+
+## [0.1.5] - 2026-09-15
+
+- Rename the ``suggest_design`` boolean parameter
+  ``non_rectangular_constraints`` to ``constraints``. The old keyword is no
+  longer accepted.
+
+[0.1.5]: https://github.com/LorenzoTJ/doetools/releases/tag/v0.1.5
+
+## [0.1.4] - 2026-09-15
+
+- Modified CHANGELOG 
+- Updated landing page of PyPi
+
+[0.1.4]: https://github.com/LorenzoTJ/doetools/releases/tag/v0.1.4
+
+## [0.1.3] - 2026-09-15
+
 ### Statistical definitions and interval API
 
 - Correct RMSE to use `sqrt(SS_res / n)`. RMSE_CV remains `sqrt(PRESS / n)`.
@@ -22,8 +52,8 @@ where it is compatible with Python's versioning rules.
 - Example migration: `plot_response(..., corrected="residuals")` becomes
   `plot_response(..., interval="confidence", variance_source="residuals")`.
 
+[0.1.3]: https://github.com/LorenzoTJ/doetools/releases/tag/v0.1.3
 
-### Changed
 
 ## [0.1.2] - 2026-09-14
 
@@ -37,8 +67,6 @@ where it is compatible with Python's versioning rules.
 [0.1.2]: https://github.com/LorenzoTJ/doetools/releases/tag/v0.1.2
 
 ## [0.1.1] - 2026-09-05
-
-### Added
 
 - Initial public release of `doetools`.
 - Experimental design generation and design recommendations.

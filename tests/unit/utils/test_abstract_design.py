@@ -740,8 +740,8 @@ class TestResponseConditions:
         design._response_list = ["Yield", "Purity"]
         
         design.set_response_conditions(
-            lower_limits=[50.0, False],
-            upper_limits=[False, 95.0],
+            lower_limits=[50.0, None],
+            upper_limits=[None, 95.0],
             maximize=[True, True]
         )
         
@@ -759,7 +759,7 @@ class TestResponseConditions:
         with pytest.raises(ValueError, match="number of conditions"):
             design.set_response_conditions(
                 lower_limits=[50.0],  # Only 1 instead of 2
-                upper_limits=[False, 95.0],
+                upper_limits=[None, 95.0],
                 maximize=[True, True]
             )
 
@@ -1640,7 +1640,7 @@ class TestEdgeCases:
         design._response_list = ["Yield", "Purity", "Cost"]
         
         design.set_response_conditions(
-            lower_limits=[40.0, 80.0, False],
+            lower_limits=[40.0, 80.0, None],
             upper_limits=[100.0, 99.0, 50.0],
             maximize=[True, True, False]
         )
