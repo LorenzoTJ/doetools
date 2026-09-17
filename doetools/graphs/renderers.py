@@ -2546,6 +2546,157 @@ class _RendererMixin:
         )
         return fig
 
+    def _render_pareto_front(
+        self,
+        *,
+        candidates: pd.DataFrame,
+        objectives: tuple[str, ...],
+        x: str,
+        y: str,
+        z: str | None,
+        show_candidates: bool,
+    ) -> go.Figure:
+        """Render domain-valid candidates and their Pareto front."""
+        factor_names = list(self._factors)
+        custom_columns = ["Candidate Id", *factor_names, *objectives]
+        hover_lines = ["<b>%{customdata[0]}</b>"]
+        offset = 1
+        for index, name in enumerate(factor_names):
+            factor = self._factors[name]
+            formatter = "" if factor.type == "cat" else ":.3f"
+            hover_lines.append(
+                f"{name}: %{{customdata[{offset + index}]{formatter}}}"
+            )
+        offset += len(factor_names)
+        for index, response in enumerate(objectives):
+            hover_lines.append(
+                f"{response}: %{{customdata[{offset + index}]:.3f}}"
+            )
+        hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+        fig = go.Figure()
+
+        def add_trace(frame: pd.DataFrame, *, name: str, color: str, size: int, opacity: float):
+            if frame.empty:
+                return
+            common = dict(
+                x=frame[x],
+                y=frame[y],
+                mode="markers",
+                name=name,
+                marker=dict(
+                    color=color,
+                    size=size,
+                    opacity=opacity,
+                    line=dict(color="white", width=0.7),
+                ),
+                customdata=frame[custom_columns].to_numpy(),
+                hovertemplate=hovertemplate,
+            )
+            if z is None:
+                fig.add_trace(go.Scatter(**common))
+            else:
+                common["z"] = frame[z]
+                fig.add_trace(go.Scatter3d(**common))
+
+        front_mask = candidates["_is_pareto"].astype(bool)
+        if show_candidates:
+            add_trace(
+                candidates.loc[~front_mask],
+                name="Domain-valid candidates",
+                color="#adb5bd",
+                size=7,
+                opacity=0.55,
+            )
+        add_trace(
+            candidates.loc[front_mask],
+            name="Pareto front",
+            color="#1971c2",
+            size=10,
+            opacity=0.95,
+        )
+
+        meta = {
+            "plot_type": "pareto_front",
+            "objectives": list(objectives),
+            "show_candidates": show_candidates,
+            "candidate_count": len(candidates),
+            "pareto_count": int(front_mask.sum()),
+        }
+        if z is None:
+            self._style_model_plot(
+                fig,
+                title="Pareto Front",
+                x_title=x,
+                y_title=y,
+                width=800,
+                height=600,
+            )
+            conditions = self._response_conditions or {}
+            x_conditions = conditions.get(x, {})
+            y_conditions = conditions.get(y, {})
+            for value in (
+                x_conditions.get("lower_limit"),
+                x_conditions.get("upper_limit"),
+            ):
+                if value is not None:
+                    fig.add_vline(x=value, line_dash="dash", line_color="#e03131")
+            for value in (
+                y_conditions.get("lower_limit"),
+                y_conditions.get("upper_limit"),
+            ):
+                if value is not None:
+                    fig.add_hline(y=value, line_dash="dash", line_color="#e03131")
+            fig.update_layout(meta=meta)
+        else:
+            axis_style = dict(
+                showline=True,
+                linewidth=2,
+                linecolor="black",
+                showgrid=True,
+                gridcolor="lightgray",
+                zeroline=False,
+                backgroundcolor="white",
+            )
+            fig.update_layout(
+                title=dict(
+                    text="<b>Pareto Front</b>",
+                    x=0.5,
+                    y=0.96,
+                    xanchor="center",
+                    yanchor="top",
+                    font=dict(size=20, color="black", family="Arial"),
+                ),
+                scene=dict(
+                    xaxis=dict(title=f"<b>{x}</b>", **axis_style),
+                    yaxis=dict(title=f"<b>{y}</b>", **axis_style),
+                    zaxis=dict(title=f"<b>{z}</b>", **axis_style),
+                ),
+                width=800,
+                height=600,
+                margin=dict(l=35, r=35, t=85, b=35),
+                paper_bgcolor="white",
+                plot_bgcolor="white",
+                font=dict(size=12, family="Arial"),
+                hovermode="closest",
+                hoverlabel=dict(
+                    bgcolor="white",
+                    bordercolor="#003153",
+                    font=dict(size=11, family="Arial", color="black"),
+                ),
+                meta=meta,
+            )
+        fig.update_layout(
+            legend=dict(
+                orientation="h",
+                y=1.02,
+                x=1,
+                xanchor="right",
+                yanchor="bottom",
+            )
+        )
+        return fig
+
     def _regression_coefficients_for_response(self, response: str) -> go.Figure:
         """Render regression coefficients for one response."""
         self._validate_plot_response(response)

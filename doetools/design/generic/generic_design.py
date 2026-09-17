@@ -14,14 +14,13 @@ from ...utils import (
     Design,
     FileUploaderMixin,
     MixtureFactor,
-    ParetoMixin,
 )
 
 
 Factor = ContinuousFactor | CategoricalFactor | MixtureFactor
 
 
-class ImportDesign(Design, GraphsMixin, FileUploaderMixin, ParetoMixin):
+class ImportDesign(Design, GraphsMixin, FileUploaderMixin):
     """Import and validate an experimental design from a DataFrame or file.
 
     Parameters

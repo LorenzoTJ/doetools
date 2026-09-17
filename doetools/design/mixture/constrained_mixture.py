@@ -9,11 +9,11 @@ from .mixture_cp_generator import build_candidate_points
 
 # Import doetools base classes
 from ...graphs import GraphsMixin
-from ...utils import Design, ModelTerms, ParetoMixin, compile_model_spec
+from ...utils import Design, ModelTerms, compile_model_spec
 
 
 # Initialize Constrained Mixture Design class
-class ConstrainedMixtureDesign(Design, GraphsMixin, ParetoMixin):
+class ConstrainedMixtureDesign(Design, GraphsMixin):
     r"""
     Generate a design for a constrained mixture region.
 
@@ -216,6 +216,7 @@ class ConstrainedMixtureDesign(Design, GraphsMixin, ParetoMixin):
             raise RuntimeError("Internal error: constrained mixture points violate upper bounds.")
 
     def set_model_terms(self, terms=ModelTerms) -> None:
+        self._invalidate_pareto_results()
         pro_factors = [
             name for name, factor in self._factors.items()
             if factor.type in ["cont", "cat"]
@@ -238,3 +239,4 @@ class ConstrainedMixtureDesign(Design, GraphsMixin, ParetoMixin):
             self._coded_design_matrix,
             self._model_spec,
         )
+        self._invalidate_pareto_results()
