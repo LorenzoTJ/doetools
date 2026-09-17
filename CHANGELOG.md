@@ -8,12 +8,17 @@ where it is compatible with Python's versioning rules.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-09-17
+
 - Replace the legacy Pareto mixin API with common design methods:
   ``compute_pareto_front``, ``get_pareto_front``, and ``plot_pareto_front``.
   Pareto grids now accept exact continuous and categorical ``factor_levels``,
   reuse bounded-mixture candidates, enforce persistent domain filters, and keep
   response limits as plot-only guides. Pareto plots now use the library's shared
   graph-object styling and can show dominated domain-valid candidates for context.
+
+[0.1.7]: https://github.com/LorenzoTJ/doetools/releases/tag/v0.1.7
+
 
 ## [0.1.6] - 2026-09-16
 
