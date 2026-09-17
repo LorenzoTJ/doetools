@@ -6,10 +6,9 @@ from typing import List
 # Import mixins and core abstract design class
 from ...graphs import GraphsMixin
 from ...utils import Design
-from ...utils import ParetoMixin
 
 # Class Definition
-class BoxBehnkenDesign(Design, GraphsMixin, ParetoMixin):
+class BoxBehnkenDesign(Design, GraphsMixin):
   r"""
   Box-Behnken Design Class.
 

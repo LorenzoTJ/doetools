@@ -17,7 +17,6 @@ from ...utils import (
     ContinuousFactor,
     Design,
     MixtureFactor,
-    ParetoMixin,
 )
 from ...utils.model_spec import ModelTerms, compile_model_spec
 from .candidate_set import DOptimalCandidateSetMixin
@@ -27,7 +26,7 @@ from .optimizer import (
 )
 
 
-class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin, ParetoMixin):
+class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
     """Augment actual-valued existing experiments by D-optimal selection.
 
     The supplied factor objects define the candidate domain and the common
@@ -328,6 +327,7 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin, ParetoMixin)
         self._coded_design_matrix = None
         self._design_matrix = None
         self._model_matrix = None
+        self._invalidate_pareto_results()
 
     def _drop_historical_candidates(
         self,
@@ -526,6 +526,7 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin, ParetoMixin)
         self._model_matrix = self._build_model_matrix(
             self._coded_design_matrix, self._model_spec
         )
+        self._invalidate_pareto_results()
         self._number_of_center_points(self._coded_design_matrix)
 
     def export_experiments(

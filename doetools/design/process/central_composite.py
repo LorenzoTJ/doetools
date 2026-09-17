@@ -6,10 +6,9 @@ from itertools import product
 # Import mixins and core abstract design class
 from ...graphs import GraphsMixin
 from ...utils import Design
-from ...utils import ParetoMixin
 
 # Class Definition
-class CentralCompositeDesign(Design, GraphsMixin, ParetoMixin):
+class CentralCompositeDesign(Design, GraphsMixin):
   r"""
   Central Composite Design (CCD) Class.
 

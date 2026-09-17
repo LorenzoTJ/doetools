@@ -124,6 +124,7 @@ class DOptDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
             ValueError: If the model contains more coefficients than candidate
                 points.
         """
+        self._invalidate_pareto_results()
         process = [
             name
             for name, factor in self._factors.items()
@@ -141,6 +142,7 @@ class DOptDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
         self._cp_model_matrix = self._build_model_matrix(
             self._coded_cp, self._model_spec
         )
+        self._invalidate_pareto_results()
 
     def compute_d_optimal(
         self,
@@ -291,6 +293,7 @@ class DOptDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
         self._model_matrix = self._build_model_matrix(
             self._coded_design_matrix, self._model_spec
         )
+        self._invalidate_pareto_results()
         self._number_of_center_points(self._coded_design_matrix)
 
     @property

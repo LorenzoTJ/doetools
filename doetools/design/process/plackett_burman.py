@@ -194,6 +194,7 @@ class PlackettBurmanDesign(Design, GraphsMixin):
     (including dummy factors). No interaction or quadratic terms are included.
     """
 
+    self._invalidate_pareto_results()
     main = list(self._factors.keys())
     
     self._model_spec = ModelSpec(
@@ -205,3 +206,4 @@ class PlackettBurmanDesign(Design, GraphsMixin):
 
     # Build the model matrix with the specified terms
     self._model_matrix = self._build_model_matrix(self._coded_design_matrix, self._model_spec)
+    self._invalidate_pareto_results()
