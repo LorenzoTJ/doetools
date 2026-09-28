@@ -70,7 +70,7 @@ Reference articles
 ------------------
 
 The following publications provide theoretical and applied context for the
-design strategies demonstrated by *doetools*.
+design examples provided by *doetools*. The examples are mainly based on the following references:
 
 * **Experimental design in chemistry: A tutorial** - Riccardo Leardi,
   *Analytica Chimica Acta* 652 (2009), 161-172.

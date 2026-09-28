@@ -183,11 +183,7 @@ class DesignSummaryMixin:
         return self._require_fitted_response(response).coef.copy(deep=True)
 
     def get_anova_summary(self, response: str) -> pd.DataFrame:
-        """Return ANOVA with SD = sqrt(MS), adding LOF rows when available.
-
-        Only the Residuals row's SD is the residual standard deviation; it uses
-        residual degrees of freedom, unlike RMSE, which uses sample size n.
-        Undefined mean squares have undefined SD values.
+        """Return ANOVA dataframe for the specified response
         """
         anova = self._require_fitted_response(response).anova
         required = ("SS_tot", "SS_reg", "SS_res", "df_tot", "df_reg", "df_res", "MS_tot", "MS_reg", "MS_res")
