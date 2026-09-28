@@ -26,7 +26,7 @@ jobs:
           python -c "import os, pathlib, re;
           text = pathlib.Path('doetools/__init__.py').read_text(encoding='utf-8');
           version = re.search(r'^__version__ = \"([^\"]+)\"', text, re.MULTILINE).group(1);
-          tag = os.environ['GITHUB_REF_NAME'].removeprefix('v');
+          tag = re.sub(r'^v\\.?', '', os.environ['GITHUB_REF_NAME']);
           assert tag == version, f'tag {tag!r} does not match version {version!r}'"
 
       - name: Install build tools
