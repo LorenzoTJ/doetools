@@ -4,9 +4,7 @@ Prediction
 ==========
 
 Use a fitted MLR model to predict one response at factor settings loaded from a
-CSV or Excel workbook. The points remain stored on the design, while predictions
-and intervals are recalculated from the current model whenever they
-are requested.
+CSV or Excel workbook.
 
 Load prediction points
 ----------------------
@@ -94,14 +92,6 @@ The limit columns are then ``PI Lower`` and ``PI Upper``. Its half-width is
 
    t_{1-\alpha/2,\,df_{res}}\sqrt{MS_{res}(1+h_0)},
    \qquad h_0 = x_0^T(X^TX)^+x_0.
-
-Both interval types are two-sided and pointwise, not simultaneous across loaded
-points. They assume an adequate OLS model with independent homoscedastic normal
-errors. ``variance_source="pure_error"`` substitutes ``MS_pe`` and ``df_pe``
-throughout, including both contributions of a prediction interval. It requires
-valid replicates; unavailable pure error raises an error instead of silently
-using residual variance. With unavailable residual variance, predictions remain
-available and either pair of limit columns contains ``NaN``.
 
 Clear prediction points
 -----------------------
