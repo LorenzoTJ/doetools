@@ -37,8 +37,9 @@ Supported Plots
 - **Leverage Plots**: Identify influential points in your design (contour and 3D);
 - **Coefficient Plots**: Visualize model coefficients with confidence intervals;
 - **Residual Analysis**: Analyze the residuals of the fitted model;
-- **Interval Plots**: Show confidence half-widths for the mean or prediction half-widths for one new observation;
+- **Confidence Interval Plots**: Show confidence half-widths for the mean or prediction half-widths for one new observation;
 - **Response Surfaces**: Contour and 3D surface plots for visualizing response behavior;
+- **Main Effects and Interaction Plots**: Visualize the effects of factors on the response;
 - **Pareto plots**: Identify good compromises for multi-response optimization;
 
 Basic Workflow
@@ -84,7 +85,7 @@ Next Steps
 
 Now that you understand the basics:
 
-* Explore :doc:`../factors` to learn about factor types in detail
+* Explore :doc:`../factors` to start defining your factors and their levels;
 
 * Review design-specific pages for your experimental scenario:
 
@@ -93,6 +94,4 @@ Now that you understand the basics:
   * :doc:`../designs/mixture/index`
   * :doc:`../designs/optimal/index`
 
-* Follow the experimental workflow, starting with :doc:`../leverage_analysis`
-  and :doc:`../export_experiments`
 * See complete real examples in :doc:`../examples/index`
