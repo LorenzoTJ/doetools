@@ -82,10 +82,6 @@ and maximize/minimize flags. These conditions are not used to fit the MLR model.
 Pareto analysis uses only the maximize/minimize directions; response limits are
 displayed as plot guides and do not remove Pareto candidates.
 
-.. note::
-    Response names must already be defined, normally by exporting with a
-    ``responses`` list. The three lists must have one value for each response.
-
 .. automethod:: doetools.utils.abstract_design.Design.set_response_conditions
 
 **Example:**
@@ -105,9 +101,6 @@ Fit separate MLR models using the defined model terms and imported responses.
 The method also identifies replicate groups, which are used for pure-error and
 lack-of-fit calculations when applicable.
 
-.. note::
-    In MLR regression, one model is computed for each response variable.
-
 .. automethod:: doetools.utils.abstract_design.Design.compute_mlr_model
 
 **Example:**
@@ -120,11 +113,11 @@ lack-of-fit calculations when applicable.
 Compute a Pareto Front
 ----------------------
 
-After fitting the response models and assigning an objective direction to each
+After fitting the response models and assigning an objective direction (maximize or minimize) to each
 selected response, evaluate the models over a deterministic candidate grid.
 ``factor_levels`` selects exact continuous and categorical levels. Unspecified
 process factors use all their declared levels. Use ``mixture_grid`` for mixture
-resolution and ``set_domain_filters()`` for non-rectangular factor constraints.
+resolution.    
 
 .. automethod:: doetools.utils.abstract_design.Design.compute_pareto_front
 
@@ -196,16 +189,6 @@ Get model quality metrics (R², Adjusted R², RMSE, etc.).
    
    # Output columns: R2 | R2_adj | Q2 | PRESS | RMSE | RMSE_CV
 
-RMSE uses ``sqrt(SS_res / n)``; RMSE_CV uses ``sqrt(PRESS / n)`` from leave-one-out
-predictions. The residual standard deviation uses ``sqrt(MS_res)`` with
-``df_res = n - rank(X)`` and is reported in the ANOVA's SD column.
-A saturated model still has a training RMSE, although its residual variance
-and residual intervals cannot be estimated.
-
-R2 and Q2 use centered total sum of squares when the fitted model contains a
-constant, and uncentered total sum of squares otherwise. Adjusted R2 uses the
-model's effective rank and residual degrees of freedom. Q2 is
-``1 - PRESS / SS_tot``; a degenerate total sum of squares makes R2/Q2 undefined.
 
 Model F-test
 ^^^^^^^^^^^^^^^^

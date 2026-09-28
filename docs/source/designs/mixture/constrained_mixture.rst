@@ -13,14 +13,6 @@ bounds and the constant-sum condition :math:`\sum x_i = 1`.
 * One or more components have practical lower or upper bounds
 * You want to explore the vertices, edges, and faces of the feasible region
 
-**Key characteristics:**
-
-* Supports three- and four-component mixtures
-* Uses the bounds defined by each :class:`~doetools.MixtureFactor`
-* Generates feasible vertices, true edge midpoints, and true face centroids by default
-* Allows individual geometric structures to be selected with ``structure``
-* Supports constrained center points and replicated boundary points
-
 The default ``structure="complete"`` includes all supported boundary structures.
 Alternatively, pass ``"vertices"`` or a collection containing ``"vertices"``,
 ``"edge_midpoints"``, and ``"face_centroids"``.
