@@ -8,6 +8,12 @@ where it is compatible with Python's versioning rules.
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-11-1
+
+- Documentation Updates
+
+[0.1.8]: https://github.com/LorenzoTJ/doetools/releases/tag/v0.1.9
+
 ## [0.1.8] - 2026-09 - 28
 
 - Small Documentation Updates
