@@ -98,6 +98,10 @@ Quick Reference
    * - :meth:`~doetools.utils.summary.DesignSummaryMixin.get_model_summary_pdf`
      - Writes the model summary report; does not return data
      - Report inputs available
+   * - :meth:`~doetools.utils.pareto._ParetoAnalysisMixin.get_pareto_front`
+     - Returns a copy of the non-dominated points
+     - Computed Pareto front
+
 
 Design Summaries
 ----------------
@@ -189,24 +193,6 @@ displayed as ``"No"``.
    conditions = design.get_response_condition_summary()
    print(conditions)
 
-Pareto Front
-------------
-
-.. automethod:: doetools.utils.abstract_design.Design.get_pareto_front
-
-Call ``compute_pareto_front()`` first. The getter returns a defensive copy of
-the non-dominated, domain-valid candidates with their candidate IDs, factor
-settings, and predicted objective responses. Response limits do not filter this
-table.
-
-.. code-block:: python
-
-   design.compute_pareto_front(
-       responses=["Yield", "Cost"],
-       factor_levels={"Temperature": [40, 50, 60]},
-                      "Pressure": [1, 2, 3]
-   )
-   front = design.get_pareto_front()
 
 Design and Model Matrices
 -------------------------
@@ -462,6 +448,19 @@ prediction, residual, PIMean limits, and ``Within PI`` result.
 See :doc:`model_validation` for the complete confirmation workflow and interval
 definition.
 
+Pareto Front
+------------
+
+.. automethod:: doetools.utils.pareto._ParetoAnalysisMixin.get_pareto_front
+
+Call :meth:`~doetools.utils.abstract_design.Design.compute_pareto_front` first.
+The result is a copy of the non-dominated candidate points. See
+:doc:`pareto_front` for the compute, retrieve, and plot workflow.
+
+.. code-block:: python
+
+   front = design.get_pareto_front()
+
 Report Generation
 -----------------
 
@@ -469,7 +468,6 @@ Report Generation
 an output action rather than a data getter: it writes a PDF and returns ``None``.
 
 .. automethod:: doetools.utils.summary.DesignSummaryMixin.get_model_summary_pdf
-   :noindex:
 
 .. code-block:: python
 

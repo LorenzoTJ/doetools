@@ -61,3 +61,6 @@ supplementary_materials/
 manual_tests/
 # Generated documentation example bundles
 docs/source/_downloads/
+
+# Repository Review
+REPOSITORY_REVIEW.md

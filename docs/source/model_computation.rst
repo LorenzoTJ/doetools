@@ -113,6 +113,8 @@ lack-of-fit calculations when applicable.
 Compute a Pareto Front
 ----------------------
 
+See :doc:`pareto_front` for a brief workflow from fitted models to plotted results.
+
 After fitting the response models and assigning an objective direction (maximize or minimize) to each
 selected response, evaluate the models over a deterministic candidate grid.
 ``factor_levels`` selects exact continuous and categorical levels. Unspecified
