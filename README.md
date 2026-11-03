@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/LorenzoTJ/doetools/actions/workflows/ci.yml/badge.svg)](https://github.com/LorenzoTJ/doetools/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](https://github.com/LorenzoTJ/doetools/blob/main/LICENSE)
 
 `doetools` is a Python library for Design of Experiments (DoE). It supports the complete workflow
 from choosing and generating a design to fitting response models, inspecting
@@ -43,7 +43,7 @@ To access the full documentation click [here](https://doetools.readthedocs.io/en
 platform-independent package. Continuous integration is configured for CPython
 3.10 through 3.14 on Linux, plus a current Python version on Windows and macOS.
 Actual platform availability also depends on the scientific Python dependencies
-listed in [`pyproject.toml`](pyproject.toml).
+listed in [`pyproject.toml`](https://github.com/LorenzoTJ/doetools/blob/main/pyproject.toml).
 
 ## Installation
 
@@ -114,7 +114,7 @@ responses with `design.import_responses(...)`, defining `ModelTerms`, and callin
 
 The documentation is built with Sphinx.
 
-- [Full documentation source](https://doetools.readthedocs.io/en/latest/)
+- [Full documentation](https://doetools.readthedocs.io/en/latest/)
 - [Complete example notebooks](https://doetools.readthedocs.io/en/latest/examples/index.html)
 
 ## Development
@@ -123,21 +123,21 @@ The development version of doetools is available on [GitHub](https://github.com/
 
 ## Project status and scope
 
-- `doetools` is currently in its initial public-release stage (`0.1.x`). Backward compatibility is not guaranteed until version `1.0`; API changes and other notable updates are documented in the [CHANGELOG](CHANGELOG.md)
+- `doetools` is currently in its initial public-release stage (`0.1.x`). Backward compatibility is not guaranteed until version `1.0`; API changes and other notable updates are documented in the [CHANGELOG](https://github.com/LorenzoTJ/doetools/blob/main/CHANGELOG.md)
 - Statistical results should be interpreted in the context of the experimental design, model assumptions, and relevant domain expertise. `doetools` does not replace experimental review or laboratory quality procedures.
 - Models are currently fitted independently for each response using ordinary least squares (OLS). Correlated-response, time-series, Bayesian, mixed-effects, and other specialized modelling approaches are outside the current scope.
 
 ## Citation
 
 If `doetools` contributes to published work, cite the software and the exact
-version used. GitHub can generate citation metadata from [`CITATION.cff`](CITATION.cff).
+version used. GitHub can generate citation metadata from [`CITATION.cff`](https://github.com/LorenzoTJ/doetools/blob/main/CITATION.cff).
 No archival DOI has been assigned yet.
 
 ## License
 
 Copyright (c) 2026 Lorenzo Teja.
 
-`doetools` is released under the [GNU General Public License, version 3 only](LICENSE)
+`doetools` is released under the [GNU General Public License, version 3 only](https://github.com/LorenzoTJ/doetools/blob/main/LICENSE)
 (`GPL-3.0-only`). This license aligns the project with its GPLv3-licensed
 `doe-toolbox` dependency, used for fractional factorial designs.
 
