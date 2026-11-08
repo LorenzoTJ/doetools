@@ -2,6 +2,7 @@ from .abstract_design import Design
 from .factors import CategoricalFactor, ContinuousFactor, MixtureFactor
 from .model_spec import ModelSpec, ModelTerms, compile_model_spec
 from .upload import FileUploaderMixin
+from .plot_export import export_plot
 
 
 def __getattr__(name):
@@ -20,5 +21,6 @@ __all__ = [
     "ModelSpec",
     "ModelTerms",
     "compile_model_spec",
+    "export_plot",
     "suggest_design"
 ]

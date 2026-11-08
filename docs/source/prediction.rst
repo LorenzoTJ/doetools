@@ -18,7 +18,7 @@ replace previously loaded points. Values use actual factor units by default:
 .. code-block:: python
 
    design.load_prediction_points(
-       source="prediction_points.xlsx",
+       source="prediction_points.csv",
        coded=False,
    )
 

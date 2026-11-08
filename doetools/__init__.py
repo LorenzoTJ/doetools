@@ -20,6 +20,7 @@ from .utils import (
     ContinuousFactor,
     MixtureFactor,
     ModelTerms,
+    export_plot,
     suggest_design,
 )
 
@@ -40,5 +41,6 @@ __all__ = [
     "SimplexCentroidDesign",
     "SimplexLatticeDesign",
     "suggest_design",
+    "export_plot",
     "__version__",
 ]

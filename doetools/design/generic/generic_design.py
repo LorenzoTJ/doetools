@@ -58,6 +58,7 @@ class ImportDesign(Design, GraphsMixin, FileUploaderMixin):
             raise TypeError("coded must be a boolean")
 
         frame = self.upload_file(source)
+        self._validate_experiment_metadata(frame)
         factor_names = list(factors)
         missing_columns = [name for name in factor_names if name not in frame.columns]
         if missing_columns:

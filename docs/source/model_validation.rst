@@ -30,7 +30,7 @@ Load independent confirmation experiments from an Excel or CSV file.
 
 The file must contain one column for every factor and every response in the fitted
 model. Each row represents one confirmation run; repeated factor settings are
-treated as replicates. ``Exp. Order``, ``Exp. Idx``, and other laboratory metadata
+treated as replicates. ``Run``, ``Idx``, and other laboratory metadata
 are optional, and additional columns are ignored.
 
 Set ``coded=True`` when process and categorical factors are stored using their
@@ -41,7 +41,7 @@ coded values. Mixture components remain proportions regardless of this option.
 .. code-block:: python
 
    design.load_confirmation_runs(
-       source="confirmation_runs.xlsx",
+       source="confirmation_runs.csv",
        coded=False,
    )
 

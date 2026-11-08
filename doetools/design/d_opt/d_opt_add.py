@@ -66,6 +66,7 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
         self._factor_names = list(self._factors)
 
         data = self.upload_file(source)
+        self._validate_experiment_metadata(data)
         missing = [name for name in self._factor_names if name not in data]
         if missing:
             raise ValueError(
@@ -533,7 +534,7 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
         self,
         responses: list[str] | None = None,
         randomize: bool = True,
-        destination: str | Path = "design_matrix.xlsx",
+        destination: str | Path = "design_matrix.csv",
         coded: bool = False,
     ) -> None:
         """Export retained existing and selected additional experiments.
@@ -541,20 +542,25 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
         Args:
             responses (list[str] | None, optional): Response columns to include.
                 Retained existing values are preserved when imported through
-                the constructor; new-run values are initialized to zero. Defaults
-                to ``None``.
+                the constructor, including zeros and missing values. New-run
+                values are missing and exported as empty cells. Defaults to ``None``.
             randomize (bool, optional): Randomize exported execution order.
                 Defaults to ``True``.
-            destination (str | Path, optional): Destination Excel path. Defaults to
-                ``"design_matrix.xlsx"``.
+            destination (str | Path, optional): Destination ``.csv`` or ``.xlsx``
+                path; its extension selects the format. Defaults to
+                ``"design_matrix.csv"``. CSV uses UTF-8, a comma separator,
+                and a decimal point.
             coded (bool, optional): Export coded rather than actual factor values.
                 Defaults to ``False``.
 
         Raises:
-            ValueError: If no augmentation has been selected.
+            TypeError: If the destination is not a string or Path.
+            ValueError: If no augmentation has been selected or the destination
+                extension is not ``.csv`` or ``.xlsx``.
         """
         if self._design_matrix is None:
             raise ValueError("No design selected; call 'select_design' first")
+        self._validate_export_columns(responses)
         matrix = (
             self._coded_design_matrix.copy()
             if coded
@@ -562,7 +568,7 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
         )
         self._response_list = responses
         for response in responses or []:
-            values = np.zeros(len(matrix))
+            values = np.full(len(matrix), np.nan)
             if (
                 self._filt_responses is not None
                 and response in self._filt_responses
@@ -571,14 +577,14 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
                     response
                 ].to_numpy()
             matrix[response] = values
-        matrix.insert(0, self.EXP_IDX_COL, matrix.index)
+        matrix.insert(0, self.EXP_IDX_COL, np.arange(1, len(matrix) + 1))
         if randomize:
-            order = np.random.permutation(len(matrix))
+            order = np.random.permutation(len(matrix)) + 1
             matrix.insert(0, self.EXP_ORDER_COL, order)
             matrix = matrix.sort_values(self.EXP_ORDER_COL)
         else:
-            matrix.insert(0, self.EXP_ORDER_COL, matrix.index)
-        matrix.to_excel(destination, index=False)
+            matrix.insert(0, self.EXP_ORDER_COL, np.arange(1, len(matrix) + 1))
+        self._export_file(matrix, destination)
 
     @property
     def log_det(self) -> pd.DataFrame | None:

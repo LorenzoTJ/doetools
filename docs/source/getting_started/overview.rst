@@ -68,15 +68,15 @@ The typical doetools workflow consists of four main steps:
     # 2. Data Collection
     design.export_experiments(responses = ["Yield"],
                               randomize=True,
-                              destination="design_matrix.xlsx")
-    design.import_responses(source="experiments_with_responses.xlsx")
+                              destination="design_matrix.csv")
+    design.import_responses(source="experiments_with_responses.csv")
 
     # 3. Model Fitting
     design.set_model_terms(terms=ModelTerms())
     design.compute_mlr_model()
 
     # 4. Analyze the fitted model
-    design.get_model_summary_pdf(filename="design_report.pdf")
+    design.save_model_summary(filename="design_report.pdf")
     design.plot_regression_coefficients()
     design.plot_response(ax1="Temperature", ax2="Pressure", response="Yield")
 

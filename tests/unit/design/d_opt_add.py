@@ -25,17 +25,21 @@ def process_file(tmp_path):
     return path
 
 
-@pytest.fixture
-def response_file(tmp_path):
-    path = tmp_path / "existing_responses.csv"
-    pd.DataFrame(
+@pytest.fixture(params=["csv", "xlsx"])
+def response_file(tmp_path, request):
+    path = tmp_path / f"existing_responses.{request.param}"
+    frame = pd.DataFrame(
         {
-            "Exp. Idx": [2, 0, 1],
+            "Idx": [3, 1, 2],
             "X1": [10.0, 0.0, 5.0],
             "X2": [0.0, 0.0, 10.0],
             "Yield": [30.0, 10.0, 20.0],
         }
-    ).to_csv(path, index=False)
+    )
+    if request.param == "csv":
+        frame.to_csv(path, index=False)
+    else:
+        frame.to_excel(path, index=False)
     return path
 
 
@@ -332,7 +336,23 @@ class TestComputeAndSelect:
         assert design.log_det is None
         assert design._design_matrix is None
 
-    def test_export_preserves_retained_responses(self, response_file, tmp_path):
+    @pytest.mark.parametrize("extension", ["csv", "xlsx"])
+    @pytest.mark.parametrize("coded", [False, True])
+    @pytest.mark.parametrize("randomize", [False, True])
+    @pytest.mark.parametrize("historical", [[10, 20, 30], [0, np.nan, 30]])
+    def test_export_preserves_retained_responses(
+        self, response_file, tmp_path, extension, coded, randomize, historical
+    ):
+        source = (
+            pd.read_csv(response_file)
+            if response_file.suffix == ".csv"
+            else pd.read_excel(response_file)
+        )
+        source["Yield"] = source["Idx"].map(dict(enumerate(historical, start=1)))
+        if response_file.suffix == ".csv":
+            source.to_csv(response_file, index=False)
+        else:
+            source.to_excel(response_file, index=False)
         design = DOptAddDesign(
             process_factors(), response_file, responses=["Yield"]
         )
@@ -340,10 +360,17 @@ class TestComputeAndSelect:
         design.set_model_terms(linear_terms())
         design.compute_d_optimal(1, 1, trials=5, random_state=4)
         design.select_design(1)
-        output = tmp_path / "augmentation.xlsx"
+        output = tmp_path / f"augmentation.{extension}"
         design.export_experiments(
-            responses=["Yield"], randomize=False, destination=output
+            responses=["Yield"], randomize=randomize, destination=output, coded=coded
         )
-        exported = pd.read_excel(output)
-        assert exported["Yield"].iloc[:3].tolist() == [10, 20, 30]
-        assert exported["Yield"].iloc[3] == 0
+        exported = pd.read_csv(output) if extension == "csv" else pd.read_excel(output)
+        exported = exported.sort_values("Idx").reset_index(drop=True)
+        expected = design._coded_design_matrix if coded else design._design_matrix
+        np.testing.assert_allclose(exported[["X1", "X2"]], expected[["X1", "X2"]])
+        np.testing.assert_allclose(exported["Yield"].iloc[:3], historical, equal_nan=True)
+        assert pd.isna(exported["Yield"].iloc[3])
+
+        design.import_responses(output)
+        np.testing.assert_allclose(design._responses["Yield"].iloc[:3], historical, equal_nan=True)
+        assert pd.isna(design._responses["Yield"].iloc[3])

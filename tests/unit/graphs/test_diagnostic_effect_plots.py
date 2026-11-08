@@ -207,11 +207,11 @@ def test_cv_diagnostics_use_predictions_stored_by_regression_result():
 def test_residuals_by_run_uses_imported_experimental_order():
     design = _fitted_process_design()
     n_runs = len(design._responses)
-    exp_order = np.arange(n_runs)[::-1] + 10
+    exp_order = np.arange(1, n_runs + 1)[::-1]
     design._experimental_metadata = pd.DataFrame(
         {
-            "Exp. Order": exp_order,
-            "Exp. Idx": np.arange(n_runs),
+            "Run": exp_order,
+            "Idx": np.arange(1, n_runs + 1),
         }
     )
 
@@ -219,7 +219,7 @@ def test_residuals_by_run_uses_imported_experimental_order():
 
     assert np.array_equal(np.asarray(figure.data[0].x), exp_order)
     assert len(figure.data[0].x) == len(figure.data[0].y) == n_runs
-    assert figure.layout.xaxis.title.text == "<b>Experimental Order</b>"
+    assert figure.layout.xaxis.title.text == "<b>Run</b>"
 
 
 def test_residuals_by_run_falls_back_to_one_based_sequence():
@@ -232,7 +232,7 @@ def test_residuals_by_run_falls_back_to_one_based_sequence():
         np.asarray(figure.data[0].x),
         np.arange(1, len(design._responses) + 1),
     )
-    assert figure.layout.xaxis.title.text == "<b>Experimental Run</b>"
+    assert figure.layout.xaxis.title.text == "<b>Idx</b>"
 
 
 def test_main_effect_is_model_based_on_dense_prediction_grid():
@@ -335,3 +335,14 @@ def test_regression_coefficients_keep_first_mixture_component_without_intercept(
     assert "A" in plotted_terms
     assert "B" in plotted_terms
     assert "C" in plotted_terms
+
+
+@pytest.mark.parametrize(("x_axis", "label"), [("exp_order", "Run"), ("exp_idx", "Idx"), ("sequence", "Sequence")])
+def test_diagnostic_axis_preserves_public_options(x_axis, label):
+    design = _fitted_process_design()
+    n = len(design._responses)
+    design._experimental_metadata = pd.DataFrame({"Run": range(n, 0, -1), "Idx": range(1, n + 1)})
+    figure = design.plot_diagnostics("Yield", view="residuals_by_run", x_axis=x_axis)
+    expected = np.arange(n, 0, -1) if x_axis == "exp_order" else np.arange(1, n + 1)
+    np.testing.assert_array_equal(figure.data[0].x, expected)
+    assert figure.layout.xaxis.title.text == f"<b>{label}</b>"

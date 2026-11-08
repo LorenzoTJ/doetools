@@ -102,15 +102,32 @@ print(design.get_design_matrix())
 design.export_experiments(
     responses=["Yield"],
     randomize=True,
-    destination="experiments.xlsx",
+    destination="experiments.csv",
 )
 ```
 
-A typical analysis continues by completing the exported workbook, importing the
+A typical analysis continues by completing the exported table, importing the
 responses with `design.import_responses(...)`, defining `ModelTerms`, and calling
 `design.compute_mlr_model()`.
 
+CSV is the default export format (`design_matrix.csv`). To export Excel, pass
+`destination="experiments.xlsx"`. Imports accept CSV, XLSX, or a pandas DataFrame.
+
 ## Documentation and examples
+
+For high-resolution static plots, install `pip install "doetools[export]"`
+and Chrome/Chromium, then use the returned Plotly figure:
+
+```python
+from doetools import export_plot
+
+fig = design.plot_design("Temperature", "Pressure")
+export_plot(fig, "design.png")  # scale=3 by default
+export_plot(fig, "design.svg")  # vector output for 2D plots
+```
+
+See the plotting guide for image dimensions, 3D export limitations, and notebook
+download-button settings. Interactive plotting does not require the export extra.
 
 The documentation is built with Sphinx.
 

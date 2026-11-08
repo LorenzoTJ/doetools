@@ -2476,11 +2476,11 @@ class _RendererMixin:
             preferred = []
             if x_axis == "exp_order":
                 preferred = [
-                    ("Exp. Order", "Experimental Order"),
-                    ("Exp. Idx", "Experimental Run"),
+                    (self.EXP_ORDER_COL, "Run"),
+                    (self.EXP_IDX_COL, "Idx"),
                 ]
             elif x_axis == "exp_idx":
-                preferred = [("Exp. Idx", "Experimental Run")]
+                preferred = [(self.EXP_IDX_COL, "Idx")]
 
             for column, label in preferred:
                 if column in metadata.columns:
@@ -2490,7 +2490,7 @@ class _RendererMixin:
                     if np.isfinite(values).all():
                         return values, label
 
-        return np.arange(1, n_runs + 1), "Experimental Run"
+        return np.arange(1, n_runs + 1), "Sequence" if x_axis == "sequence" else "Idx"
 
     @staticmethod
     def _style_model_plot(
@@ -2823,7 +2823,7 @@ class _RendererMixin:
                 hovertemplate=(
                     "Experimental: %{x:.3f}<br>"
                     "Predicted: %{y:.3f}<br>"
-                    "Experimental Run: %{customdata}"
+                    "Idx: %{customdata}"
                     "<extra></extra>"
                 ),
                 showlegend=False,
@@ -2971,7 +2971,7 @@ class _RendererMixin:
                 hovertemplate=(
                     "Fitted: %{x:.3f}<br>"
                     "Residual: %{y:.3f}<br>"
-                    "Experimental Run: %{customdata}"
+                    "Idx: %{customdata}"
                     "<extra></extra>"
                 ),
                 showlegend=False,

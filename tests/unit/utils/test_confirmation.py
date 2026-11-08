@@ -47,7 +47,7 @@ def _fitted_process_design():
 def _confirmation_frame():
     return pd.DataFrame(
         {
-            "Exp. Order": [3, 1, 2],
+            "Run": [3, 1, 2],
             "A": [2.0, 2.004, 8.0],
             "B": [25.0, 25.0, 35.0],
             "Yield": [10.1, 10.3, 12.4],
@@ -57,13 +57,18 @@ def _confirmation_frame():
     )
 
 
-def test_load_groups_runs_and_getters_return_defensive_copies(tmp_path):
+@pytest.mark.parametrize("extension", ["csv", "xlsx"])
+def test_load_groups_runs_and_getters_return_defensive_copies(tmp_path, extension):
     design = _fitted_process_design()
-    path = tmp_path / "confirmation.xlsx"
-    _confirmation_frame().to_excel(path, index=False)
+    path = tmp_path / f"confirmation.{extension}"
+    if extension == "csv":
+        _confirmation_frame().to_csv(path, index=False)
+    else:
+        _confirmation_frame().to_excel(path, index=False)
 
     design.load_confirmation_runs(path)
 
+    assert design._confirmation_metadata["Run"].tolist() == [3, 1, 2]
     points = design.get_confirmation_points()
     responses = design.get_confirmation_responses()
     assert list(points.columns) == ["A", "B"]
@@ -130,7 +135,7 @@ def test_pimean_matches_independent_statsmodels_calculation(tmp_path):
 def test_actual_and_coded_loads_are_equivalent(tmp_path):
     actual_design = _fitted_process_design()
     coded_design = _fitted_process_design()
-    frame = _confirmation_frame().drop(columns=["Exp. Order", "Lab Note"])
+    frame = _confirmation_frame().drop(columns=["Run", "Lab Note"])
     actual_path = tmp_path / "actual.csv"
     coded_path = tmp_path / "coded.csv"
     frame.to_csv(actual_path, index=False)
@@ -381,3 +386,12 @@ def test_confirmation_plot_rejects_unknown_view(tmp_path):
 
     with pytest.raises(ValueError, match="view must be either"):
         design.plot_confirmation("Yield", view="unknown")
+
+
+@pytest.mark.parametrize("legacy", ["Exp. Order", "Exp. Idx"])
+def test_confirmation_rejects_legacy_metadata(legacy):
+    design = _fitted_process_design()
+    frame = _confirmation_frame()
+    frame[legacy] = [0, 1, 2]
+    with pytest.raises(ValueError, match="Rename.*add 1"):
+        design.load_confirmation_runs(frame)

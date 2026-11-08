@@ -87,7 +87,7 @@ Set "coded=True" when the factor columns already contain coded values:
 
     design = ImportDesign(
         factors=factors,
-        source="coded_external_design.xlsx",
+        source="coded_external_design.csv",
         coded=True,
     )
 

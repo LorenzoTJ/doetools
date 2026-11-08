@@ -8,6 +8,41 @@ where it is compatible with Python's versioning rules.
 
 ## [Unreleased]
 
+### Added
+
+- Public `export_plot(fig, destination, scale=3, width=None, height=None)` helper
+  for high-resolution PNG/JPEG/WebP and SVG/PDF exports, preserving figure layout
+  dimensions by default. Install `doetools[export]` for optional Kaleido support;
+  Chrome/Chromium is also required. Interactive plotting requires no extra.
+
+### Changed
+
+- Rename `get_model_summary_pdf` to `save_model_summary` without a compatibility
+  alias. Replace existing calls with `design.save_model_summary(...)`; the
+  `filename` argument, default `design_report.pdf`, PDF output, and `None`
+  return value are unchanged.
+
+- Documentation notebooks now use CSV experiment inputs and outputs with
+  one-based `Run`/`Idx` identifiers and empty unmeasured responses. D-optimal
+  examples use a fixed random seed for reproducibility.
+
+- Unmeasured responses in experimental-plan exports are now empty CSV/XLSX
+  cells instead of zeros. D-optimal augmentation preserves historical
+  measurements, including zeros and missing values, and leaves new responses
+  empty. Model fitting continues to require complete, finite responses.
+
+- Experiment tables now use `Run` for laboratory execution order and `Idx` for
+  the stable experiment identifier, both numbered from 1. Internal pandas
+  indices remain zero-based. Imports reject the old `Exp. Order` and `Exp. Idx`
+  headers: rename them and add 1 to their previous zero-based values. Diagnostic
+  plots and PDF experiment tables now use the same identifiers; PDFs show `Run`
+  only when execution metadata was imported.
+
+- Experimental-plan exports now default to `design_matrix.csv` for all designs,
+  including D-optimal augmentation. The destination extension selects CSV or XLSX;
+  pass an explicit `.xlsx` destination to retain Excel output. CSV uses UTF-8,
+  comma-separated fields, and a decimal point. Excel support remains included.
+
 ## [0.1.10] - 2026-11-3
 
 - Link updates in the README file

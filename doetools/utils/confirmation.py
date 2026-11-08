@@ -77,6 +77,7 @@ class ConfirmationRunsMixin(_ExternalPointValidationMixin):
             raise TypeError("coded must be a boolean.")
         fitted_results = self._require_confirmation_model()
         frame = self.upload_file(source)
+        self._validate_experiment_metadata(frame)
         if not isinstance(frame, pd.DataFrame) or frame.empty:
             raise ValueError("The confirmation-runs source must contain at least one row.")
         if frame.columns.has_duplicates:
@@ -113,7 +114,7 @@ class ConfirmationRunsMixin(_ExternalPointValidationMixin):
         responses = responses.reset_index(drop=True)
 
         metadata_columns = [
-            name for name in ("Exp. Order", "Exp. Idx") if name in frame.columns
+            name for name in (self.EXP_ORDER_COL, self.EXP_IDX_COL) if name in frame.columns
         ]
         metadata = (
             frame[metadata_columns].reset_index(drop=True).copy()

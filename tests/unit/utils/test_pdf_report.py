@@ -83,7 +83,7 @@ def test_to_multicol_df_basic_splitting(dummy_design):
 
 
 def test_to_multicol_df_with_run_column(dummy_design):
-    """Test that Run column is correctly added and numbered."""
+    """Test that Idx column is correctly added and numbered."""
     pdf = DesignReportPDF(dummy_design)
     
     df = pd.DataFrame({
@@ -92,17 +92,17 @@ def test_to_multicol_df_with_run_column(dummy_design):
     
     result = pdf.to_multicol_df(df, max_rows=3, runs=True)
     
-    # Should have Run column in each block
-    # First block: Run 1-3, Second block: Run 4-5
-    assert 'Run' in result.columns
+    # Should have Idx column in each block
+    # First block: Idx 1-3, Second block: Idx 4-5
+    assert 'Idx' in result.columns
     
-    # Check first block Run values
-    assert result.iloc[0, 0] == '1'  # First Run column, first value
+    # Check first block Idx values
+    assert result.iloc[0, 0] == '1'  # First Idx column, first value
     assert result.iloc[1, 0] == '2'
     assert result.iloc[2, 0] == '3'
     
-    # Check second block Run values (starts at column 2, index 0-based)
-    assert result.iloc[0, 2] == '4'  # Second Run column, first value
+    # Check second block Idx values (starts at column 2, index 0-based)
+    assert result.iloc[0, 2] == '4'  # Second Idx column, first value
     assert result.iloc[1, 2] == '5'
 
 
@@ -173,7 +173,7 @@ def test_to_multicol_df_exact_multiple(dummy_design):
 
 
 def test_to_multicol_df_run_numbering_continuity(dummy_design):
-    """Test that Run numbers continue across blocks correctly."""
+    """Test that Idx numbers continue across blocks correctly."""
     pdf = DesignReportPDF(dummy_design)
     
     df = pd.DataFrame({'Data': range(15)})
@@ -181,9 +181,9 @@ def test_to_multicol_df_run_numbering_continuity(dummy_design):
     result = pdf.to_multicol_df(df, max_rows=6, runs=True)
     
     # Should have 3 blocks: 6 + 6 + 3
-    # Block 1: Run 1-6 (columns 0-1)
-    # Block 2: Run 7-12 (columns 2-3)
-    # Block 3: Run 13-15 (columns 4-5)
+    # Block 1: Idx 1-6 (columns 0-1)
+    # Block 2: Idx 7-12 (columns 2-3)
+    # Block 3: Idx 13-15 (columns 4-5)
     
     # Check continuity
     assert result.iloc[0, 0] == '1'   # Block 1, row 1
@@ -193,7 +193,7 @@ def test_to_multicol_df_run_numbering_continuity(dummy_design):
     assert result.iloc[0, 4] == '13'  # Block 3, row 1
     assert result.iloc[2, 4] == '15'  # Block 3, row 3
     
-    # Padded rows in block 3 should have empty Run values
+    # Padded rows in block 3 should have empty Idx values
     assert result.iloc[3, 4] == ''
     assert result.iloc[4, 4] == ''
     assert result.iloc[5, 4] == ''
@@ -416,7 +416,7 @@ def test_safe_text_normalizes_unicode_and_special_values():
 
 
 def test_wide_design_matrix_is_split_without_losing_columns():
-    matrix = pd.DataFrame({"Run": range(1, 4)})
+    matrix = pd.DataFrame({"Idx": range(1, 4)})
     factor_columns = [f"Long process factor {index}" for index in range(18)]
     for index, column in enumerate(factor_columns):
         matrix[column] = index
@@ -424,7 +424,7 @@ def test_wide_design_matrix_is_split_without_losing_columns():
     groups = DesignReportPDF._split_design_matrix(matrix, max_width=120)
 
     assert len(groups) > 1
-    assert all(group.columns[0] == "Run" for group in groups)
+    assert all(group.columns[0] == "Idx" for group in groups)
     assert [column for group in groups for column in group.columns[1:]] == factor_columns
     assert all(len(group) == len(matrix) for group in groups)
 
@@ -561,7 +561,7 @@ def test_complete_pdf_smoke_for_supported_designs(design_factory, tmp_path):
     design = design_factory()
     output = tmp_path / "report.pdf"
 
-    result = design.get_model_summary_pdf(str(output))
+    result = design.save_model_summary(str(output))
 
     assert result is None
     assert output.stat().st_size > 500
@@ -598,7 +598,7 @@ def test_complete_pdf_smoke_for_d_optimal_augmentation(tmp_path):
     design.compute_mlr_model()
     output = tmp_path / "augmentation_report.pdf"
 
-    design.get_model_summary_pdf(str(output))
+    design.save_model_summary(str(output))
 
     assert output.stat().st_size > 500
     assert output.read_bytes().startswith(b"%PDF-")
@@ -623,7 +623,54 @@ def test_complete_pdf_smoke_for_imported_design(tmp_path):
     )
     output = tmp_path / "imported_report.pdf"
 
-    design.get_model_summary_pdf(str(output))
+    design.save_model_summary(str(output))
 
     assert output.stat().st_size > 500
     assert output.read_bytes().startswith(b"%PDF-")
+
+
+@pytest.mark.parametrize("with_run", [False, True])
+def test_pdf_identifiers_align_across_tables(tmp_path, monkeypatch, with_run):
+    design = _process_design()
+    expected = design._responses.copy()
+    n = len(expected)
+    if with_run:
+        source = pd.DataFrame({"Run": list(range(n, 0, -1)), "Idx": range(1, n + 1)})
+        source[expected.columns[0]] = expected.iloc[:, 0].to_numpy()
+        design.import_responses(source.sort_values("Run"))
+    pdf = DesignReportPDF(design)
+    snapshot = pdf._create_snapshot()
+    identifiers = pdf._experiment_identifiers(snapshot)
+    assert identifiers["Idx"].tolist() == list(range(1, n + 1))
+    assert ("Run" in identifiers.columns) == with_run
+    if with_run:
+        assert identifiers["Run"].tolist() == list(range(n, 0, -1))
+        design._experimental_metadata.loc[0, "Run"] = 1
+        assert snapshot.experimental_metadata.loc[0, "Run"] == n
+        design._experimental_metadata.loc[0, "Run"] = n
+    captured = []
+    original = pdf.add_table_from_df
+
+    def capture(frame, *args, **kwargs):
+        captured.append(frame.copy(deep=True))
+        return original(frame, *args, **kwargs)
+
+    monkeypatch.setattr(pdf, "add_table_from_df", capture)
+    pdf.build(str(tmp_path / "identifiers.pdf"))
+    experiment_tables = [frame for frame in captured if "Idx" in frame.columns]
+    assert len(experiment_tables) >= 3  # leverage, observed/predicted, design appendix
+    for frame in experiment_tables:
+        pd.testing.assert_frame_equal(frame[list(identifiers.columns)].reset_index(drop=True), identifiers)
+    observed = next(frame for frame in experiment_tables if "Observed" in frame)
+    np.testing.assert_allclose(observed["Observed"], expected.iloc[:, 0])
+
+
+def test_wide_design_matrix_repeats_both_identifiers():
+    matrix = pd.DataFrame({"Run": [3, 1, 2], "Idx": [1, 2, 3]})
+    for index in range(18):
+        matrix[f"Long factor {index}"] = index
+    groups = DesignReportPDF._split_design_matrix(matrix, max_width=120)
+    assert len(groups) > 1
+    for group in groups:
+        pd.testing.assert_frame_equal(group[["Run", "Idx"]], matrix[["Run", "Idx"]])
+    assert [column for group in groups for column in group.columns[2:]] == list(matrix.columns[2:])
