@@ -115,4 +115,5 @@ Process-augmentation example
 the first constructor parameter and the input data are copied defensively.
 
 Imported response values are retained for existing rows during export. Response
-cells for the selected new runs are initialized to zero.
+cells for the selected new runs are left empty. Historical measurements,
+including zeros and missing values, are preserved.

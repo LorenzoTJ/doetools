@@ -18,7 +18,9 @@ The internal pandas matrix indices remain zero-based. The names ``Run`` and
 
 If you plan to import measured results with :meth:`import_responses`, define the
 response names when exporting. Those names are retained by the design and identify
-the response columns expected during import.
+the response columns expected during import. Unmeasured responses are exported
+as empty cells in CSV and XLSX, using missing values internally rather than
+zeros. A measured zero remains a valid response value.
 
 Before exporting the design, you can modify it by adding replicates to improve precision
 and enable lack-of-fit testing.

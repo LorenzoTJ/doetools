@@ -818,9 +818,9 @@ class TestExportImport:
         assert "Purity" in df.columns
         assert df.shape[0] == 9  # Should have 9 experiments
         
-        # Verify response columns are zero
-        assert all(df["Yield"] == 0.0)
-        assert all(df["Purity"] == 0.0)
+        # Verify unmeasured response columns are missing
+        assert df["Yield"].isna().all()
+        assert df["Purity"].isna().all()
         
         # Verify experimental order is sequential (not randomized)
         assert list(df["Run"]) == list(range(1, 10))

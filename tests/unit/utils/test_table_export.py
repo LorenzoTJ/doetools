@@ -1,8 +1,11 @@
 """Shared export behavior for ordinary and augmented designs."""
 
+import csv
+
 import pandas as pd
 import numpy as np
 import pytest
+from openpyxl import load_workbook
 
 from doetools import ContinuousFactor, DOptAddDesign, FullFactorialDesign, ImportDesign, ModelTerms
 
@@ -27,7 +30,7 @@ def test_export_defaults_to_csv(export_design, tmp_path, monkeypatch):
 
     frame = pd.read_csv("design_matrix.csv")
     assert list(frame.columns) == ["Run", "Idx", "A", "Yield"]
-    assert frame["Yield"].tolist() == [0] * len(frame)
+    assert frame["Yield"].isna().all()
     assert not (tmp_path / "design_matrix.xlsx").exists()
 
 
@@ -62,6 +65,61 @@ def test_one_based_identifiers_round_trip(export_design, tmp_path, extension, ra
         export_design._experimental_metadata,
         frame.sort_values("Idx")[["Run", "Idx"]].reset_index(drop=True),
     )
+
+
+@pytest.mark.parametrize("extension", ["csv", "xlsx"])
+@pytest.mark.parametrize("randomize", [False, True])
+@pytest.mark.parametrize("coded", [False, True])
+def test_unmeasured_responses_are_empty_cells(export_design, tmp_path, extension, randomize, coded):
+    path = tmp_path / f"empty_responses.{extension}"
+    export_design.export_experiments(
+        responses=["Yield", "Purity"], destination=path, randomize=randomize, coded=coded
+    )
+    if extension == "csv":
+        with path.open(encoding="utf-8", newline="") as stream:
+            rows = list(csv.DictReader(stream))
+        assert len(rows) == len(export_design._design_matrix)
+        assert all(row["Yield"] == row["Purity"] == "" for row in rows)
+    else:
+        workbook = load_workbook(path, read_only=True, data_only=True)
+        try:
+            rows = list(workbook.active.values)
+            assert len(rows) == len(export_design._design_matrix) + 1
+            assert rows[0][-2:] == ("Yield", "Purity")
+            assert all(row[-2:] == (None, None) for row in rows[1:])
+        finally:
+            workbook.close()
+    assert export_design.upload_file(path)[["Yield", "Purity"]].isna().all().all()
+
+
+@pytest.mark.parametrize("extension", ["csv", "xlsx"])
+def test_incomplete_round_trip_blocks_fit_until_completed(export_design, tmp_path, extension):
+    if not isinstance(export_design, DOptAddDesign):
+        export_design.set_model_terms(ModelTerms(intercept=True, pro_main="all"))
+    path = tmp_path / f"incomplete.{extension}"
+    export_design.export_experiments(responses=["Yield"], destination=path, randomize=True)
+    frame = export_design.upload_file(path)
+    frame["Yield"] = frame["Idx"].map({1: 0.0, 2: np.nan, 3: 4.1})
+    # A file may be reordered independently of Run and Idx.
+    frame = frame.iloc[::-1].reset_index(drop=True)
+
+    def save_and_import():
+        if extension == "csv":
+            frame.to_csv(path, index=False)
+        else:
+            frame.to_excel(path, index=False)
+        export_design.import_responses(path)
+
+    save_and_import()
+    np.testing.assert_allclose(export_design._responses["Yield"], [0.0, np.nan, 4.1], equal_nan=True)
+    assert export_design._experimental_metadata["Idx"].tolist() == [1, 2, 3]
+    with pytest.raises(ValueError, match="Response contains missing or non-finite values"):
+        export_design.compute_mlr_model()
+    frame.loc[frame["Idx"] == 2, "Yield"] = 2.0
+    save_and_import()
+    export_design.compute_mlr_model()
+    np.testing.assert_allclose(export_design._responses["Yield"], [0.0, 2.0, 4.1])
+    assert np.isfinite(export_design.get_fitted_values().to_numpy()).all()
 
 
 @pytest.mark.parametrize("column", ["Run", "Idx"])

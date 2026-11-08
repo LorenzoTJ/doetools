@@ -20,7 +20,9 @@ Import experimental results after lab execution.
 ``Idx`` must contain each integer from 1 to the number of experiments exactly
 once. Results are matched by ``Idx``, regardless of file row order. ``Run`` is
 optional; when present, it must also be a permutation of 1 through N and is
-retained as execution-order metadata.
+retained as execution-order metadata. Empty response cells are imported as
+missing values; they are not replaced with zeros or removed. Complete all
+responses before fitting a model, which requires finite numeric measurements.
 
 Migrating older files
 ---------------------

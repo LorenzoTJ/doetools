@@ -339,9 +339,20 @@ class TestComputeAndSelect:
     @pytest.mark.parametrize("extension", ["csv", "xlsx"])
     @pytest.mark.parametrize("coded", [False, True])
     @pytest.mark.parametrize("randomize", [False, True])
+    @pytest.mark.parametrize("historical", [[10, 20, 30], [0, np.nan, 30]])
     def test_export_preserves_retained_responses(
-        self, response_file, tmp_path, extension, coded, randomize
+        self, response_file, tmp_path, extension, coded, randomize, historical
     ):
+        source = (
+            pd.read_csv(response_file)
+            if response_file.suffix == ".csv"
+            else pd.read_excel(response_file)
+        )
+        source["Yield"] = source["Idx"].map(dict(enumerate(historical, start=1)))
+        if response_file.suffix == ".csv":
+            source.to_csv(response_file, index=False)
+        else:
+            source.to_excel(response_file, index=False)
         design = DOptAddDesign(
             process_factors(), response_file, responses=["Yield"]
         )
@@ -357,8 +368,9 @@ class TestComputeAndSelect:
         exported = exported.sort_values("Idx").reset_index(drop=True)
         expected = design._coded_design_matrix if coded else design._design_matrix
         np.testing.assert_allclose(exported[["X1", "X2"]], expected[["X1", "X2"]])
-        assert exported["Yield"].iloc[:3].tolist() == [10, 20, 30]
-        assert exported["Yield"].iloc[3] == 0
+        np.testing.assert_allclose(exported["Yield"].iloc[:3], historical, equal_nan=True)
+        assert pd.isna(exported["Yield"].iloc[3])
 
         design.import_responses(output)
-        assert design._responses["Yield"].tolist() == [10, 20, 30, 0]
+        np.testing.assert_allclose(design._responses["Yield"].iloc[:3], historical, equal_nan=True)
+        assert pd.isna(design._responses["Yield"].iloc[3])
