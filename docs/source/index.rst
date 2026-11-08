@@ -66,6 +66,7 @@ To get started with *doetools*, please refer to the following sections:
    export_experiments
    import_responses
    model_computation
+   pareto_front
    prediction
    model_validation
    common_getters
