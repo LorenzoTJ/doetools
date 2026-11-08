@@ -115,6 +115,20 @@ CSV is the default export format (`design_matrix.csv`). To export Excel, pass
 
 ## Documentation and examples
 
+For high-resolution static plots, install `pip install "doetools[export]"`
+and Chrome/Chromium, then use the returned Plotly figure:
+
+```python
+from doetools import export_plot
+
+fig = design.plot_design("Temperature", "Pressure")
+export_plot(fig, "design.png")  # scale=3 by default
+export_plot(fig, "design.svg")  # vector output for 2D plots
+```
+
+See the plotting guide for image dimensions, 3D export limitations, and notebook
+download-button settings. Interactive plotting does not require the export extra.
+
 The documentation is built with Sphinx.
 
 - [Full documentation](https://doetools.readthedocs.io/en/latest/)

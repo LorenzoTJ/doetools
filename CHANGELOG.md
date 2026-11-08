@@ -8,7 +8,18 @@ where it is compatible with Python's versioning rules.
 
 ## [Unreleased]
 
+### Added
+
+- Public `export_plot(fig, destination, scale=3, width=None, height=None)` helper
+  for high-resolution PNG/JPEG/WebP and SVG/PDF exports, preserving figure layout
+  dimensions by default. Install `doetools[export]` for optional Kaleido support;
+  Chrome/Chromium is also required. Interactive plotting requires no extra.
+
 ### Changed
+
+- Documentation notebooks now use CSV experiment inputs and outputs with
+  one-based `Run`/`Idx` identifiers and empty unmeasured responses. D-optimal
+  examples use a fixed random seed for reproducibility.
 
 - Unmeasured responses in experimental-plan exports are now empty CSV/XLSX
   cells instead of zeros. D-optimal augmentation preserves historical

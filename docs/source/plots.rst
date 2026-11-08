@@ -9,6 +9,81 @@ Use ``fig.write_html("plot.html")`` for a self-contained interactive file.
 Static image export through ``fig.write_image(...)`` requires Plotly's static
 image export dependency.
 
+High-quality image export
+-------------------------
+
+Use ``export_plot`` to save a returned figure as PNG, JPEG, WebP, SVG, or PDF.
+Install the optional static-export dependencies in the notebook's environment:
+
+.. code-block:: bash
+
+   pip install "doetools[export]"
+
+Kaleido also requires Chrome or Chromium. If Chrome is unavailable, install it
+normally or run ``plotly_get_chrome`` in that environment. Export errors retain
+Plotly's browser-installation guidance. Interactive plots do not require this
+extra. See `Plotly static image export
+<https://plotly.com/python/static-image-export/>`_ for browser requirements.
+
+.. code-block:: python
+
+   from doetools import export_plot
+
+   fig = design.plot_design("Temperature", "Pressure")
+
+   # Default scale=3: an 800 x 500 figure becomes a 2400 x 1500 PNG.
+   export_plot(fig, "design.png")
+
+   # SVG/PDF preserve vector text and lines for 2D plots.
+   export_plot(fig, "design.svg")
+   export_plot(fig, "design.pdf")
+
+   # Explicit layout size and resolution for raster output.
+   export_plot(fig, "design_large.png", width=1000, height=650, scale=3)
+
+The extension selects the format (case-insensitive); supported extensions are
+``.png``, ``.jpg``, ``.jpeg``, ``.webp``, ``.svg``, and ``.pdf``. The destination
+directory must already exist. Existing output files are overwritten.
+
+``width`` and ``height`` define the layout in logical pixels. When omitted, the
+figure's dimensions are preserved; Plotly defaults apply to unspecified figure
+dimensions. ``scale`` multiplies the output resolution: the last example writes
+3000 x 1950 pixels. Changing layout dimensions can reflow legends and axes;
+increasing scale preserves their proportions. The helper does not mutate the
+figure or global Plotly settings.
+
+For 3D surfaces and other WebGL traces, SVG/PDF include rasterized elements.
+Prefer a high-resolution PNG with ``scale=3`` or ``scale=4`` for those plots;
+vector output alone does not remove WebGL pixelation. See Plotly's
+`vector export limitations
+<https://plotly.com/python/static-image-export/#vector-formats>`_.
+
+.. autofunction:: doetools.export_plot
+
+Notebook download button
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+The camera button has its own settings, independent of ``export_plot`` and
+``write_image``. Configure it when displaying a figure; browser-based downloads
+do not require the optional Kaleido dependency:
+
+.. code-block:: python
+
+   fig.show(config={
+       "toImageButtonOptions": {
+           "format": "png",
+           "filename": "design",
+           "width": 1000,
+           "height": 650,
+           "scale": 3,
+       }
+   })
+
+Use ``"svg"`` instead of ``"png"`` for vector download of 2D plots. To preserve
+the currently displayed dimensions, use ``None`` for width and height. See
+`Plotly download-button configuration
+<https://plotly.com/python/configuration-options/#customizing-modebar-download-plot-button>`_.
+
 Available plots
 ---------------
 

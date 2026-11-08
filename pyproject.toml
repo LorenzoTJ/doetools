@@ -49,6 +49,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+export = ["kaleido>=1"]
+
 dev = [
   "build>=1.2",
   "pytest>=8.0",
