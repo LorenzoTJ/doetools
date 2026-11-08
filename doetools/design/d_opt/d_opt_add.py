@@ -533,7 +533,7 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
         self,
         responses: list[str] | None = None,
         randomize: bool = True,
-        destination: str | Path = "design_matrix.xlsx",
+        destination: str | Path = "design_matrix.csv",
         coded: bool = False,
     ) -> None:
         """Export retained existing and selected additional experiments.
@@ -545,13 +545,17 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
                 to ``None``.
             randomize (bool, optional): Randomize exported execution order.
                 Defaults to ``True``.
-            destination (str | Path, optional): Destination Excel path. Defaults to
-                ``"design_matrix.xlsx"``.
+            destination (str | Path, optional): Destination ``.csv`` or ``.xlsx``
+                path; its extension selects the format. Defaults to
+                ``"design_matrix.csv"``. CSV uses UTF-8, a comma separator,
+                and a decimal point.
             coded (bool, optional): Export coded rather than actual factor values.
                 Defaults to ``False``.
 
         Raises:
-            ValueError: If no augmentation has been selected.
+            TypeError: If the destination is not a string or Path.
+            ValueError: If no augmentation has been selected or the destination
+                extension is not ``.csv`` or ``.xlsx``.
         """
         if self._design_matrix is None:
             raise ValueError("No design selected; call 'select_design' first")
@@ -578,7 +582,7 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
             matrix = matrix.sort_values(self.EXP_ORDER_COL)
         else:
             matrix.insert(0, self.EXP_ORDER_COL, matrix.index)
-        matrix.to_excel(destination, index=False)
+        self._export_file(matrix, destination)
 
     @property
     def log_det(self) -> pd.DataFrame | None:

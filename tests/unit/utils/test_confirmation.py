@@ -57,10 +57,14 @@ def _confirmation_frame():
     )
 
 
-def test_load_groups_runs_and_getters_return_defensive_copies(tmp_path):
+@pytest.mark.parametrize("extension", ["csv", "xlsx"])
+def test_load_groups_runs_and_getters_return_defensive_copies(tmp_path, extension):
     design = _fitted_process_design()
-    path = tmp_path / "confirmation.xlsx"
-    _confirmation_frame().to_excel(path, index=False)
+    path = tmp_path / f"confirmation.{extension}"
+    if extension == "csv":
+        _confirmation_frame().to_csv(path, index=False)
+    else:
+        _confirmation_frame().to_excel(path, index=False)
 
     design.load_confirmation_runs(path)
 

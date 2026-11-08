@@ -4,8 +4,11 @@ Export Experiments
 ==================
 
 In this section, we cover how to export the experimental design matrix for execution in the laboratory.
-The :meth:`export_experiments` method writes an Excel workbook (``.xlsx``) with
-options for randomization and response columns. CSV export is not supported.
+The :meth:`export_experiments` method writes a CSV file by default, with
+options for randomization and response columns. Use a ``.xlsx`` destination to
+write an Excel workbook instead. The extension selects the format; supported
+extensions are ``.csv`` and ``.xlsx`` (case-insensitive). Omitting the destination
+writes ``design_matrix.csv``.
 
 If you plan to import measured results with :meth:`import_responses`, define the
 response names when exporting. Those names are retained by the design and identify
@@ -52,7 +55,7 @@ Export Experiments
 export_experiments
 ^^^^^^^^^^^^^^^^^^
 
-Export a design matrix to an Excel workbook for laboratory execution.
+Export a design matrix to CSV or XLSX for laboratory execution.
 
 .. note::
     ``Exp. Order`` is the planned sequence in which to perform the runs. Follow it
@@ -72,8 +75,20 @@ Export a design matrix to an Excel workbook for laboratory execution.
    design.export_experiments(
        responses=["Yield", "Purity", "Cost"],
        randomize=True,
-       destination="experiment_plan.xlsx",
+       destination="experiment_plan.csv",
        coded=False  # Use actual factor units
    )
 
 
+Excel output is available by specifying an XLSX destination:
+
+.. code-block:: python
+
+   design.export_experiments(
+       responses=["Yield", "Purity", "Cost"],
+       destination="experiment_plan.xlsx",
+   )
+
+CSV files use UTF-8, a comma separator, and a decimal point. Both formats contain
+column headers without an additional pandas index column. Excel support is
+included in the standard installation; legacy ``.xls`` files are not supported.

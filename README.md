@@ -102,13 +102,16 @@ print(design.get_design_matrix())
 design.export_experiments(
     responses=["Yield"],
     randomize=True,
-    destination="experiments.xlsx",
+    destination="experiments.csv",
 )
 ```
 
-A typical analysis continues by completing the exported workbook, importing the
+A typical analysis continues by completing the exported table, importing the
 responses with `design.import_responses(...)`, defining `ModelTerms`, and calling
 `design.compute_mlr_model()`.
+
+CSV is the default export format (`design_matrix.csv`). To export Excel, pass
+`destination="experiments.xlsx"`. Imports accept CSV, XLSX, or a pandas DataFrame.
 
 ## Documentation and examples
 

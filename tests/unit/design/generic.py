@@ -158,9 +158,14 @@ class TestImportDesign:
             [-1.414, -1.0, 0.0, 1.0, 1.414],
         )
 
-    def test_accepts_excel_files(self, tmp_path):
-        path = tmp_path / "design.xlsx"
-        pd.DataFrame({"Temperature": [20, 25, 40]}).to_excel(path, index=False)
+    @pytest.mark.parametrize("extension", ["csv", "xlsx"])
+    def test_accepts_files(self, tmp_path, extension):
+        path = tmp_path / f"design.{extension}"
+        frame = pd.DataFrame({"Temperature": [20, 25, 40]})
+        if extension == "csv":
+            frame.to_csv(path, index=False)
+        else:
+            frame.to_excel(path, index=False)
         factors = {"Temperature": ContinuousFactor(3, 20, 40, decimals=1)}
 
         design = ImportDesign(factors=factors, source=path)

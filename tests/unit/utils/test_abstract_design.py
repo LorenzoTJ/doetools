@@ -788,13 +788,14 @@ def test_import_responses_accepts_dataframe_defensively(mock_design_ff):
     sys.platform == "win32" and "OneDrive" in Path.cwd().parts,
     reason="Excel export/import tests hang intermittently in a Windows/OneDrive checkout",
 )
+@pytest.mark.parametrize("extension", ["csv", "xlsx"])
 class TestExportImport:
     """Test export_experiments and import_responses methods."""
 
-    def test_export_experiments_basic(self, mock_design_ff, tmp_path):
-        """Test basic export of experiments to Excel."""
+    def test_export_experiments_basic(self, mock_design_ff, tmp_path, extension):
+        """Test basic export of experiments to CSV or XLSX."""
         design = mock_design_ff
-        output_file = tmp_path / "test_export.xlsx"
+        output_file = tmp_path / f"test_export.{extension}"
         
         design.export_experiments(
             responses=["Yield", "Purity"],
@@ -807,7 +808,7 @@ class TestExportImport:
         assert output_file.exists()
         
         # Read back the file and verify structure
-        df = pd.read_excel(output_file)
+        df = (pd.read_csv(output_file) if extension == "csv" else pd.read_excel(output_file))
         
         assert "Exp. Order" in df.columns
         assert "Exp. Idx" in df.columns
@@ -824,10 +825,10 @@ class TestExportImport:
         # Verify experimental order is sequential (not randomized)
         assert list(df["Exp. Order"]) == list(range(9))
     
-    def test_export_experiments_coded(self, mock_design_ff, tmp_path):
+    def test_export_experiments_coded(self, mock_design_ff, tmp_path, extension):
         """Test export with coded factor values."""
         design = mock_design_ff
-        output_file = tmp_path / "test_export_coded.xlsx"
+        output_file = tmp_path / f"test_export_coded.{extension}"
         
         design.export_experiments(
             responses=["Yield"],
@@ -836,7 +837,7 @@ class TestExportImport:
             coded=True
         )
         
-        df = pd.read_excel(output_file)
+        df = (pd.read_csv(output_file) if extension == "csv" else pd.read_excel(output_file))
         
         # Verify coded values are in the [-1, 1] range
         assert df["A"].min() == -1.0
@@ -844,10 +845,10 @@ class TestExportImport:
         assert df["B"].min() == -1.0
         assert df["B"].max() == 1.0
     
-    def test_export_experiments_randomized(self, mock_design_ff, tmp_path):
+    def test_export_experiments_randomized(self, mock_design_ff, tmp_path, extension):
         """Test export with randomized run order."""
         design = mock_design_ff
-        output_file = tmp_path / "test_export_random.xlsx"
+        output_file = tmp_path / f"test_export_random.{extension}"
         
         # Set seed for reproducibility
         np.random.seed(42)
@@ -859,7 +860,7 @@ class TestExportImport:
             coded=False
         )
         
-        df = pd.read_excel(output_file)
+        df = (pd.read_csv(output_file) if extension == "csv" else pd.read_excel(output_file))
         
         # Verify that Exp. Order exists and contains a valid permutation
         assert "Exp. Order" in df.columns
@@ -868,10 +869,10 @@ class TestExportImport:
         # Verify order is actually randomized (not sequential)
         assert list(df["Exp. Idx"]) != list(range(9))
     
-    def test_export_experiments_no_responses(self, mock_design_ff, tmp_path):
+    def test_export_experiments_no_responses(self, mock_design_ff, tmp_path, extension):
         """Test export without response columns."""
         design = mock_design_ff
-        output_file = tmp_path / "test_export_no_resp.xlsx"
+        output_file = tmp_path / f"test_export_no_resp.{extension}"
         
         design.export_experiments(
             responses=None,
@@ -880,7 +881,7 @@ class TestExportImport:
             coded=False
         )
         
-        df = pd.read_excel(output_file)
+        df = (pd.read_csv(output_file) if extension == "csv" else pd.read_excel(output_file))
         
         # Should only have order, index, and factor columns
         assert "Exp. Order" in df.columns
@@ -889,12 +890,12 @@ class TestExportImport:
         assert "B" in df.columns
         assert "Yield" not in df.columns
     
-    def test_import_responses_valid(self, mock_design_ff, tmp_path):
+    def test_import_responses_valid(self, mock_design_ff, tmp_path, extension):
         """Test importing valid response data."""
         design = mock_design_ff
         
         # First export the design
-        export_file = tmp_path / "export_for_import.xlsx"
+        export_file = tmp_path / f"export_for_import.{extension}"
         design.export_experiments(
             responses=["Yield", "Purity"],
             randomize=False,
@@ -902,11 +903,14 @@ class TestExportImport:
             coded=False
         )
         
-        # Modify the Excel file to add response data
-        df = pd.read_excel(export_file)
+        # Modify the exported file to add response data
+        df = (pd.read_csv(export_file) if extension == "csv" else pd.read_excel(export_file))
         df["Yield"] = [45.2, 78.5, 62.3, 89.1, 55.8, 92.4, 88.0, 76.5, 95.0]
         df["Purity"] = [88.5, 91.2, 85.7, 94.5, 87.3, 95.8, 90.1, 89.4, 93.2]
-        df.to_excel(export_file, index=False)
+        if extension == "csv":
+            df.to_csv(export_file, index=False)
+        else:
+            df.to_excel(export_file, index=False)
         
         # Import the responses
         design.import_responses(source=str(export_file))
@@ -919,48 +923,54 @@ class TestExportImport:
         assert np.isclose(design._responses["Yield"].iloc[0], 45.2)
         assert np.isclose(design._responses["Purity"].iloc[8], 93.2)
     
-    def test_import_responses_wrong_size(self, mock_design_ff, tmp_path):
+    def test_import_responses_wrong_size(self, mock_design_ff, tmp_path, extension):
         """Test that importing wrong number of rows raises error."""
         design = mock_design_ff
         
         # Create a file with wrong number of rows
-        wrong_file = tmp_path / "wrong_size.xlsx"
+        wrong_file = tmp_path / f"wrong_size.{extension}"
         df = pd.DataFrame({
             "Exp. Idx": [0, 1, 2],
             "Yield": [45.2, 78.5, 62.3],
             "Purity": [88.5, 91.2, 85.7]
         })
-        df.to_excel(wrong_file, index=False)
+        if extension == "csv":
+            df.to_csv(wrong_file, index=False)
+        else:
+            df.to_excel(wrong_file, index=False)
         
         design._response_list = ["Yield", "Purity"]
         
         with pytest.raises(ValueError, match="Number of rows"):
             design.import_responses(source=str(wrong_file))
     
-    def test_import_responses_missing_columns(self, mock_design_ff, tmp_path):
+    def test_import_responses_missing_columns(self, mock_design_ff, tmp_path, extension):
         """Test that missing response columns raises error."""
         design = mock_design_ff
         
         # Create a file missing expected response columns
-        missing_file = tmp_path / "missing_cols.xlsx"
+        missing_file = tmp_path / f"missing_cols.{extension}"
         df = pd.DataFrame({
             "Exp. Idx": list(range(9)),
             "Yield": [45.2, 78.5, 62.3, 89.1, 55.8, 92.4, 88.0, 76.5, 95.0],
             # Missing "Purity" column
         })
-        df.to_excel(missing_file, index=False)
+        if extension == "csv":
+            df.to_csv(missing_file, index=False)
+        else:
+            df.to_excel(missing_file, index=False)
         
         design._response_list = ["Yield", "Purity"]
         
         with pytest.raises(ValueError, match="Response columns not found"):
             design.import_responses(source=str(missing_file))
     
-    def test_import_responses_reordered(self, mock_design_ff, tmp_path):
+    def test_import_responses_reordered(self, mock_design_ff, tmp_path, extension):
         """Test that import correctly handles reordered experiments."""
         design = mock_design_ff
         
         # Export with randomization
-        export_file = tmp_path / "export_random.xlsx"
+        export_file = tmp_path / f"export_random.{extension}"
         np.random.seed(42)
         design.export_experiments(
             responses=["Yield"],
@@ -970,7 +980,7 @@ class TestExportImport:
         )
         
         # Read the exported file to see the randomized order
-        df = pd.read_excel(export_file)
+        df = (pd.read_csv(export_file) if extension == "csv" else pd.read_excel(export_file))
         
         # Add response data in the randomized order shown in the file
         # These values are assigned based on the Exp. Order (randomized sequence)
@@ -980,7 +990,10 @@ class TestExportImport:
         # This creates the expected order after import reorders by Exp. Idx
         expected_order = df.sort_values("Exp. Idx")["Yield"].values
         
-        df.to_excel(export_file, index=False)
+        if extension == "csv":
+            df.to_csv(export_file, index=False)
+        else:
+            df.to_excel(export_file, index=False)
         
         # Import should reorder by Exp. Idx
         design.import_responses(source=str(export_file))

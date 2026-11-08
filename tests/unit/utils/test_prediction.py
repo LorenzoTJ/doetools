@@ -55,10 +55,14 @@ def _prediction_frame():
     )
 
 
-def test_load_xlsx_and_getters_preserve_points_and_return_copies(tmp_path):
+@pytest.mark.parametrize("extension", ["csv", "xlsx"])
+def test_load_file_and_getters_preserve_points_and_return_copies(tmp_path, extension):
     design = _fitted_process_design()
-    path = tmp_path / "prediction.xlsx"
-    _prediction_frame().to_excel(path, index=False)
+    path = tmp_path / f"prediction.{extension}"
+    if extension == "csv":
+        _prediction_frame().to_csv(path, index=False)
+    else:
+        _prediction_frame().to_excel(path, index=False)
 
     design.load_prediction_points(path)
 

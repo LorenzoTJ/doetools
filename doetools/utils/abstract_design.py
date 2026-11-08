@@ -957,29 +957,33 @@ class Design(
   def export_experiments(self,
                         responses: Optional[List[str]] = None,
                         randomize: bool = True,
-                        destination: str | Path = "design_matrix.xlsx",
+                        destination: str | Path = "design_matrix.csv",
                         coded: bool = False) -> None:
     """
-    Export the experimental design to an Excel file for laboratory execution.
+    Export the experimental design to CSV or XLSX for laboratory execution.
 
     The execution order can be randomized to reduce systematic effects during
-    laboratory work. Export is supported only for Excel workbooks; use an
-    ``.xlsx`` path.
+    laboratory work. The destination extension selects CSV or Excel output.
 
     Args:
         responses (list[str] | None): Names of response variables to add to the
-            workbook. Provide these names when results will later be imported with
+            table. Provide these names when results will later be imported with
             :meth:`import_responses`; they are retained for validating the import.
             Defaults to ``None``.
         randomize (bool): Whether to randomize the execution order. Defaults to
             ``True``.
-        destination (str | Path): Destination Excel workbook path. CSV export is not
-            supported. Defaults to ``"design_matrix.xlsx"``.
+        destination (str | Path): Destination ``.csv`` or ``.xlsx`` path.
+            Defaults to ``"design_matrix.csv"``. CSV uses UTF-8, a comma
+            separator, and a decimal point.
         coded (bool): If ``True``, export coded factor values. If ``False``, export
             values in the original experimental units. Defaults to ``False``.
 
+    Raises:
+        TypeError: If the destination is not a string or Path.
+        ValueError: If the destination extension is not ``.csv`` or ``.xlsx``.
+
     Notes:
-        The workbook contains the following columns:
+        The exported table contains the following columns:
 
         - ``Exp. Order`` is the planned execution sequence. Follow this column in
           the laboratory; it is randomized when ``randomize=True``.
@@ -1010,7 +1014,7 @@ class Design(
       d_matrix = d_matrix.sort_values(by=self.EXP_ORDER_COL)
     else:
       d_matrix.insert(0, self.EXP_ORDER_COL, d_matrix.index)
-    d_matrix.to_excel(destination, index=False)
+    self._export_file(d_matrix, destination)
 
   def import_responses(self, source: str | Path | pd.DataFrame) -> None:
     """

@@ -41,7 +41,7 @@ coded values. Mixture components remain proportions regardless of this option.
 .. code-block:: python
 
    design.load_confirmation_runs(
-       source="confirmation_runs.xlsx",
+       source="confirmation_runs.csv",
        coded=False,
    )
 

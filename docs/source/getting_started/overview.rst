@@ -68,8 +68,8 @@ The typical doetools workflow consists of four main steps:
     # 2. Data Collection
     design.export_experiments(responses = ["Yield"],
                               randomize=True,
-                              destination="design_matrix.xlsx")
-    design.import_responses(source="experiments_with_responses.xlsx")
+                              destination="design_matrix.csv")
+    design.import_responses(source="experiments_with_responses.csv")
 
     # 3. Model Fitting
     design.set_model_terms(terms=ModelTerms())

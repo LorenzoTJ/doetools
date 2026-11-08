@@ -8,6 +8,13 @@ where it is compatible with Python's versioning rules.
 
 ## [Unreleased]
 
+### Changed
+
+- Experimental-plan exports now default to `design_matrix.csv` for all designs,
+  including D-optimal augmentation. The destination extension selects CSV or XLSX;
+  pass an explicit `.xlsx` destination to retain Excel output. CSV uses UTF-8,
+  comma-separated fields, and a decimal point. Excel support remains included.
+
 ## [0.1.10] - 2026-11-3
 
 - Link updates in the README file

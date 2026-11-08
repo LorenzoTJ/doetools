@@ -79,7 +79,7 @@ Process-augmentation example
     }
     design = DOptAddDesign(
         factors=factors,
-        source="existing_data.xlsx",
+        source="existing_data.csv",
         responses=["Yield"],
     )
 
@@ -108,7 +108,7 @@ Process-augmentation example
     design.select_design(5)
     design.export_experiments(
         responses=["Yield"],
-        destination="augmented_design.xlsx",
+        destination="augmented_design.csv",
     )
 
 ``source`` can also be a pandas DataFrame. In either form, ``factors`` remains
