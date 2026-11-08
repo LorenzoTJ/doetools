@@ -17,6 +17,11 @@ where it is compatible with Python's versioning rules.
 
 ### Changed
 
+- Rename `get_model_summary_pdf` to `save_model_summary` without a compatibility
+  alias. Replace existing calls with `design.save_model_summary(...)`; the
+  `filename` argument, default `design_report.pdf`, PDF output, and `None`
+  return value are unchanged.
+
 - Documentation notebooks now use CSV experiment inputs and outputs with
   one-based `Run`/`Idx` identifiers and empty unmeasured responses. D-optimal
   examples use a fixed random seed for reproducibility.

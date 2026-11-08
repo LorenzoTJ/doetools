@@ -561,7 +561,7 @@ def test_complete_pdf_smoke_for_supported_designs(design_factory, tmp_path):
     design = design_factory()
     output = tmp_path / "report.pdf"
 
-    result = design.get_model_summary_pdf(str(output))
+    result = design.save_model_summary(str(output))
 
     assert result is None
     assert output.stat().st_size > 500
@@ -598,7 +598,7 @@ def test_complete_pdf_smoke_for_d_optimal_augmentation(tmp_path):
     design.compute_mlr_model()
     output = tmp_path / "augmentation_report.pdf"
 
-    design.get_model_summary_pdf(str(output))
+    design.save_model_summary(str(output))
 
     assert output.stat().st_size > 500
     assert output.read_bytes().startswith(b"%PDF-")
@@ -623,7 +623,7 @@ def test_complete_pdf_smoke_for_imported_design(tmp_path):
     )
     output = tmp_path / "imported_report.pdf"
 
-    design.get_model_summary_pdf(str(output))
+    design.save_model_summary(str(output))
 
     assert output.stat().st_size > 500
     assert output.read_bytes().startswith(b"%PDF-")

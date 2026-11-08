@@ -1,11 +1,14 @@
 PDF Reports
 ===========
 
-``get_model_summary_pdf()`` writes a static PDF summary of an experimental
+``save_model_summary()`` writes a static PDF summary of an experimental
 design and its fitted response models. Use it to archive an analysis or share a
 consistent report with collaborators. The report contains tables, diagnostic
 summaries, and statistical interpretations; it does not embed interactive Plotly
 figures or confirmation-run analysis.
+
+The method returns ``None`` and currently supports PDF output only. Its
+``filename`` argument defaults to ``"design_report.pdf"``.
 
 Generating a report
 -------------------
@@ -41,10 +44,9 @@ the report.
    design.import_responses(source="completed_experiments.csv")
    design.compute_mlr_model()
 
-   design.get_model_summary_pdf(filename="design_report.pdf")
+   design.save_model_summary(filename="design_report.pdf")
 
-.. automethod:: doetools.utils.summary.DesignSummaryMixin.get_model_summary_pdf
-   :noindex:
+.. automethod:: doetools.utils.summary.DesignSummaryMixin.save_model_summary
 
 Report contents
 ---------------

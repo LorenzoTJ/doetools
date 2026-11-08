@@ -76,7 +76,7 @@ The typical doetools workflow consists of four main steps:
     design.compute_mlr_model()
 
     # 4. Analyze the fitted model
-    design.get_model_summary_pdf(filename="design_report.pdf")
+    design.save_model_summary(filename="design_report.pdf")
     design.plot_regression_coefficients()
     design.plot_response(ax1="Temperature", ax2="Pressure", response="Yield")
 

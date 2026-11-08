@@ -95,9 +95,6 @@ Quick Reference
    * - :meth:`~doetools.utils.confirmation.ConfirmationRunsMixin.get_confirmation_results`
      - Grouped PIMean validation results for one response
      - Fitted model and confirmation runs
-   * - :meth:`~doetools.utils.summary.DesignSummaryMixin.get_model_summary_pdf`
-     - Writes the model summary report; does not return data
-     - Report inputs available
    * - :meth:`~doetools.utils.pareto._ParetoAnalysisMixin.get_pareto_front`
      - Returns a copy of the non-dominated points
      - Computed Pareto front
@@ -464,13 +461,7 @@ The result is a copy of the non-dominated candidate points. See
 Report Generation
 -----------------
 
-``get_model_summary_pdf`` follows the package's ``get_*`` naming convention but is
-an output action rather than a data getter: it writes a PDF and returns ``None``.
-
-.. automethod:: doetools.utils.summary.DesignSummaryMixin.get_model_summary_pdf
-
-.. code-block:: python
-
-   design.get_model_summary_pdf(filename="design_report.pdf")
+Use :meth:`~doetools.utils.summary.DesignSummaryMixin.save_model_summary` to
+save a PDF report. This output action returns ``None``.
 
 See :doc:`pdf_reports` for report contents and the complete workflow.

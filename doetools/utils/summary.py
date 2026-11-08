@@ -258,7 +258,7 @@ class DesignSummaryMixin:
             return pd.DataFrame(columns=["F_value", "F_crit_95%", "F_crit_99%", "p_value"])
         return RegressionAnalyzer.compute_lof_f_test(response, self._mlr_wrapper).copy(deep=True)
 
-    def get_model_summary_pdf(self, filename: str = "design_report.pdf") -> None:
+    def save_model_summary(self, filename: str = "design_report.pdf") -> None:
         """Write a static PDF summary of the design and fitted response models.
 
         The report is assembled from the public summary getters. It includes

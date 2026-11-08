@@ -368,7 +368,8 @@ def test_get_lof_f_test_returns_empty_dataframe_with_insufficient_dof(dummy_desi
     assert result.empty
     assert list(result.columns) == ["F_value", "F_crit_95%", "F_crit_99%", "p_value"]
 
-def test_model_summary_pdf(monkeypatch, dummy_design, tmp_path):
+@pytest.mark.parametrize("use_default", [False, True])
+def test_save_model_summary(monkeypatch, dummy_design, tmp_path, use_default):
     called = {}
 
     class DummyPDF:
@@ -380,8 +381,27 @@ def test_model_summary_pdf(monkeypatch, dummy_design, tmp_path):
 
     monkeypatch.setattr("doetools.utils.summary.DesignReportPDF", DummyPDF)
 
-    outfile = tmp_path / "report.pdf"
-    dummy_design.get_model_summary_pdf(filename=str(outfile))
+    outfile = "design_report.pdf" if use_default else str(tmp_path / "report.pdf")
+    result = (
+        dummy_design.save_model_summary()
+        if use_default else dummy_design.save_model_summary(filename=outfile)
+    )
 
     assert called.get("init") is True
-    assert called.get("filename") == str(outfile)
+    assert called.get("filename") == outfile
+    assert result is None
+
+
+def test_report_method_is_renamed_on_all_public_designs():
+    import inspect
+    import doetools
+
+    classes = [getattr(doetools, name) for name in doetools.__all__]
+    designs = [cls for cls in classes if inspect.isclass(cls) and issubclass(cls, DesignSummaryMixin)]
+    assert designs
+    for cls in [DesignSummaryMixin, *designs]:
+        assert callable(cls.save_model_summary)
+        assert not hasattr(cls, "get_model_summary_pdf")
+        signature = inspect.signature(cls.save_model_summary)
+        assert list(signature.parameters) == ["self", "filename"]
+        assert signature.parameters["filename"].default == "design_report.pdf"
