@@ -542,8 +542,8 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
         Args:
             responses (list[str] | None, optional): Response columns to include.
                 Retained existing values are preserved when imported through
-                the constructor; new-run values are initialized to zero. Defaults
-                to ``None``.
+                the constructor, including zeros and missing values. New-run
+                values are missing and exported as empty cells. Defaults to ``None``.
             randomize (bool, optional): Randomize exported execution order.
                 Defaults to ``True``.
             destination (str | Path, optional): Destination ``.csv`` or ``.xlsx``
@@ -568,7 +568,7 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
         )
         self._response_list = responses
         for response in responses or []:
-            values = np.zeros(len(matrix))
+            values = np.full(len(matrix), np.nan)
             if (
                 self._filt_responses is not None
                 and response in self._filt_responses

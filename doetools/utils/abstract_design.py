@@ -1023,8 +1023,8 @@ class Design(
           row. Do not edit it: :meth:`import_responses` uses it to restore the
           internal design order.
         - Factor columns contain the settings for each run.
-        - Response columns contain the named measurements to complete after running
-          the experiments.
+        - Response columns contain missing values, exported as empty cells to
+          complete after running the experiments.
     """
     
     self._validate_export_columns(responses)
@@ -1038,7 +1038,7 @@ class Design(
     # Add Response columns to the design matrix to export
     if isinstance(responses, list):
       for response in responses:
-        d_matrix[response] = np.zeros(d_matrix.shape[0])
+        d_matrix[response] = np.nan
     # Add the experimental order and randomize the experiments
     d_matrix.insert(0, self.EXP_IDX_COL, np.arange(1, len(d_matrix) + 1))
     if randomize:

@@ -10,6 +10,11 @@ where it is compatible with Python's versioning rules.
 
 ### Changed
 
+- Unmeasured responses in experimental-plan exports are now empty CSV/XLSX
+  cells instead of zeros. D-optimal augmentation preserves historical
+  measurements, including zeros and missing values, and leaves new responses
+  empty. Model fitting continues to require complete, finite responses.
+
 - Experiment tables now use `Run` for laboratory execution order and `Idx` for
   the stable experiment identifier, both numbered from 1. Internal pandas
   indices remain zero-based. Imports reject the old `Exp. Order` and `Exp. Idx`
