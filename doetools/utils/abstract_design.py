@@ -45,9 +45,9 @@ class Design(
   TOLERANCE : float
       Numerical tolerance for floating-point comparisons (1e-12).
   EXP_IDX_COL : str
-      Column name for experiment index in exported files.
+      Column name for the stable, one-based experiment identifier (Idx).
   EXP_ORDER_COL : str
-      Column name for experiment execution order in exported files.
+      Column name for one-based laboratory execution order (Run).
       
   Notes
   -----
@@ -64,8 +64,8 @@ class Design(
 
   # Class constants
   TOLERANCE: float = 1e-12
-  EXP_IDX_COL: str = "Exp. Idx"
-  EXP_ORDER_COL: str = "Exp. Order"
+  EXP_IDX_COL: str = "Idx"
+  EXP_ORDER_COL: str = "Run"
 
   def __init__(self):
     
@@ -954,6 +954,37 @@ class Design(
       
   # ------------------------ Export / Import Data ---------------------------- #
 
+  def _validate_experiment_metadata(self, frame: pd.DataFrame, *, require_idx: bool = False) -> None:
+    """Validate public run identifiers without changing the input table."""
+    legacy = [name for name in ("Exp. Order", "Exp. Idx") if name in frame.columns]
+    if legacy:
+      raise ValueError(
+        "Legacy experiment columns are no longer supported: " + ", ".join(legacy)
+        + ". Rename 'Exp. Order' to 'Run' and 'Exp. Idx' to 'Idx'; "
+        "add 1 to their old zero-based values."
+      )
+    if require_idx and self.EXP_IDX_COL not in frame.columns:
+      raise ValueError("Response source must contain the 'Idx' column.")
+    expected = np.arange(1, len(frame) + 1)
+    for column in (self.EXP_IDX_COL, self.EXP_ORDER_COL):
+      if column not in frame.columns:
+        continue
+      values = frame[column]
+      if isinstance(values, pd.DataFrame):
+        raise ValueError(f"Duplicate metadata column: {column}")
+      if (not pd.api.types.is_numeric_dtype(values)
+          or pd.api.types.is_bool_dtype(values)
+          or values.isna().any()
+          or not np.array_equal(np.sort(values.to_numpy()), expected)):
+        raise ValueError(f"{column} must contain unique integer identifiers from 1 to {len(frame)}.")
+
+  def _validate_export_columns(self, responses) -> None:
+    """Reserve public metadata headers for experiment identification."""
+    reserved = {self.EXP_ORDER_COL, self.EXP_IDX_COL}
+    conflicts = reserved.intersection(self._factors).union(reserved.intersection(responses or []))
+    if conflicts:
+      raise ValueError(f"Run and Idx are reserved metadata columns: {sorted(conflicts)}")
+
   def export_experiments(self,
                         responses: Optional[List[str]] = None,
                         randomize: bool = True,
@@ -983,11 +1014,12 @@ class Design(
         ValueError: If the destination extension is not ``.csv`` or ``.xlsx``.
 
     Notes:
+        Both identifiers start at 1; pandas matrix indices remain zero-based.
         The exported table contains the following columns:
 
-        - ``Exp. Order`` is the planned execution sequence. Follow this column in
+        - ``Run`` is the planned execution sequence. Follow this column in
           the laboratory; it is randomized when ``randomize=True``.
-        - ``Exp. Idx`` is the stable identifier of the corresponding internal design
+        - ``Idx`` is the stable identifier of the corresponding internal design
           row. Do not edit it: :meth:`import_responses` uses it to restore the
           internal design order.
         - Factor columns contain the settings for each run.
@@ -995,6 +1027,7 @@ class Design(
           the experiments.
     """
     
+    self._validate_export_columns(responses)
     self._response_list = responses
     self._invalidate_pareto_results()
     # Define which matrix to export (design matrix or raw_design_matrix)
@@ -1007,13 +1040,13 @@ class Design(
       for response in responses:
         d_matrix[response] = np.zeros(d_matrix.shape[0])
     # Add the experimental order and randomize the experiments
-    d_matrix.insert(0, self.EXP_IDX_COL, d_matrix.index)
+    d_matrix.insert(0, self.EXP_IDX_COL, np.arange(1, len(d_matrix) + 1))
     if randomize:
-      random_idx = np.random.choice(d_matrix.index, size=len(d_matrix), replace=False)
+      random_idx = np.random.permutation(len(d_matrix)) + 1
       d_matrix.insert(0, self.EXP_ORDER_COL, random_idx)
       d_matrix = d_matrix.sort_values(by=self.EXP_ORDER_COL)
     else:
-      d_matrix.insert(0, self.EXP_ORDER_COL, d_matrix.index)
+      d_matrix.insert(0, self.EXP_ORDER_COL, np.arange(1, len(d_matrix) + 1))
     self._export_file(d_matrix, destination)
 
   def import_responses(self, source: str | Path | pd.DataFrame) -> None:
@@ -1034,20 +1067,21 @@ class Design(
         FileNotFoundError: If a supplied path does not exist.
 
     Notes:
-        The results file must retain ``Exp. Idx`` and every response column supplied
-        to :meth:`export_experiments`. ``Exp. Idx`` identifies the stable internal
-        design row and is used to reorder results before they are stored. ``Exp.
-        Order`` is the planned laboratory execution sequence; it is retained as
-        metadata when present but does not determine response matching.
+        The results file must retain ``Idx`` and every response column supplied
+        to :meth:`export_experiments`. ``Idx`` identifies the stable internal
+        design row and is used to reorder results before they are stored. Both
+        identifiers start at 1. ``Run`` is the planned laboratory execution
+        sequence; it is retained as metadata when present but does not determine response matching.
     """
 
     md_matrix = self.upload_file(source)
-    # Sort values by the exp index -> reorder
-    md_matrix = md_matrix.sort_values(by=self.EXP_IDX_COL).reset_index(drop=True)
             
     if md_matrix.shape[0] != self._coded_design_matrix.shape[0]:
       raise ValueError("Number of rows in the response source must match the number of experiments")
     
+    self._validate_experiment_metadata(md_matrix, require_idx=True)
+    md_matrix = md_matrix.sort_values(by=self.EXP_IDX_COL).reset_index(drop=True)
+
     # Validate response columns exist in the uploaded file
     missing_responses = [r for r in self._response_list if r not in md_matrix.columns]
     if missing_responses:

@@ -66,6 +66,7 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
         self._factor_names = list(self._factors)
 
         data = self.upload_file(source)
+        self._validate_experiment_metadata(data)
         missing = [name for name in self._factor_names if name not in data]
         if missing:
             raise ValueError(
@@ -559,6 +560,7 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
         """
         if self._design_matrix is None:
             raise ValueError("No design selected; call 'select_design' first")
+        self._validate_export_columns(responses)
         matrix = (
             self._coded_design_matrix.copy()
             if coded
@@ -575,13 +577,13 @@ class DOptAddDesign(DOptimalCandidateSetMixin, Design, GraphsMixin):
                     response
                 ].to_numpy()
             matrix[response] = values
-        matrix.insert(0, self.EXP_IDX_COL, matrix.index)
+        matrix.insert(0, self.EXP_IDX_COL, np.arange(1, len(matrix) + 1))
         if randomize:
-            order = np.random.permutation(len(matrix))
+            order = np.random.permutation(len(matrix)) + 1
             matrix.insert(0, self.EXP_ORDER_COL, order)
             matrix = matrix.sort_values(self.EXP_ORDER_COL)
         else:
-            matrix.insert(0, self.EXP_ORDER_COL, matrix.index)
+            matrix.insert(0, self.EXP_ORDER_COL, np.arange(1, len(matrix) + 1))
         self._export_file(matrix, destination)
 
     @property

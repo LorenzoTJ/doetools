@@ -47,6 +47,7 @@ class _ReportSnapshot:
     leverages: _OptionalSection
     response_conditions: _OptionalSection
     response_analysis: dict[object, _ResponseSnapshot]
+    experimental_metadata: pd.DataFrame | None = None
 
 
 class DesignReportPDF(FPDF):
@@ -357,7 +358,7 @@ class DesignReportPDF(FPDF):
         for start in range(0, len(data), max_rows):
             block = data.iloc[start:start + max_rows].copy().reset_index(drop=True)
             if runs:
-                block.insert(0, "Run", [str(index + 1) for index in range(start, start + len(block))])
+                block.insert(0, "Idx", [str(index + 1) for index in range(start, start + len(block))])
             blocks.append(block)
         height = max(len(block) for block in blocks)
         for index, block in enumerate(blocks):
@@ -368,12 +369,13 @@ class DesignReportPDF(FPDF):
 
     @classmethod
     def _split_design_matrix(cls, dataframe: pd.DataFrame, max_width: float) -> list[pd.DataFrame]:
-        """Split wide matrices into stable column groups while repeating Run."""
-        if "Run" not in dataframe.columns:
-            raise ValueError("Design matrix appendix requires a Run column.")
-        columns = [column for column in dataframe.columns if column != "Run"]
+        """Split wide matrices while repeating experiment identifiers."""
+        if "Idx" not in dataframe.columns:
+            raise ValueError("Design matrix appendix requires an Idx column.")
+        identifiers = [column for column in ("Run", "Idx") if column in dataframe.columns]
+        columns = [column for column in dataframe.columns if column not in identifiers]
         if not columns:
-            return [dataframe[["Run"]].copy()]
+            return [dataframe[identifiers].copy()]
 
         def desired_width(column) -> float:
             strings = [cls._safe_text(column)] + [cls._safe_text(value) for value in dataframe[column].head(200)]
@@ -382,18 +384,18 @@ class DesignReportPDF(FPDF):
 
         groups: list[list[str]] = []
         current: list[str] = []
-        current_width = 16.0
+        current_width = 16.0 * len(identifiers)
         for column in columns:
             width = desired_width(column)
             if current and current_width + width > max_width:
                 groups.append(current)
                 current = []
-                current_width = 16.0
+                current_width = 16.0 * len(identifiers)
             current.append(column)
             current_width += width
         if current:
             groups.append(current)
-        return [dataframe[["Run", *group]].copy(deep=True) for group in groups]
+        return [dataframe[[*identifiers, *group]].copy(deep=True) for group in groups]
 
     # ------------------------------------------------------------------
     # Getter snapshot and diagnostics
@@ -471,6 +473,17 @@ class DesignReportPDF(FPDF):
                 ),
             )
 
+        metadata = getattr(self.design, "_experimental_metadata", None)
+        if not isinstance(metadata, pd.DataFrame):
+            metadata = None
+        elif len(metadata) != len(design_matrix):
+            raise ValueError("Experimental metadata must align with design rows.")
+        else:
+            self.design._validate_experiment_metadata(metadata, require_idx=True)
+            if metadata["Idx"].tolist() != list(range(1, len(metadata) + 1)):
+                raise ValueError("Experimental metadata must be in internal Idx order.")
+            metadata = metadata.reset_index(drop=True).copy(deep=True)
+
         return _ReportSnapshot(
             design_summary=design_summary.copy(deep=True),
             factor_summary=factor_summary.copy(deep=True),
@@ -487,7 +500,17 @@ class DesignReportPDF(FPDF):
                 missing_is_expected=True,
             ),
             response_analysis=response_analysis,
+            experimental_metadata=metadata,
         )
+
+    @staticmethod
+    def _experiment_identifiers(snapshot: _ReportSnapshot) -> pd.DataFrame:
+        """Return identifiers in internal order, without inventing a lab order."""
+        metadata = snapshot.experimental_metadata
+        if metadata is not None:
+            columns = [column for column in ("Run", "Idx") if column in metadata]
+            return metadata[columns].reset_index(drop=True).copy(deep=True)
+        return pd.DataFrame({"Idx": range(1, len(snapshot.design_matrix) + 1)})
 
     @staticmethod
     def _model_matrix_diagnostics(model_matrix: pd.DataFrame) -> dict[str, object]:
@@ -770,10 +793,11 @@ class DesignReportPDF(FPDF):
             if "Leverage" not in leverage.columns:
                 self.add_notice("Section unavailable", "Leverage summary does not contain a Leverage column.", kind="warning")
             else:
-                leverage.insert(0, "Run", range(1, len(leverage) + 1))
+                identifiers = self._experiment_identifiers(snapshot)
+                leverage = pd.concat([identifiers, leverage.reset_index(drop=True)], axis=1)
                 average = pd.to_numeric(leverage["Leverage"], errors="coerce").mean()
                 self.add_paragraph(f"Average leverage: {self._safe_text(average)}")
-                self.add_table_from_df(leverage[["Run", "Leverage"]], row_color_mode="ROWS")
+                self.add_table_from_df(leverage[[*identifiers.columns, "Leverage"]], row_color_mode="ROWS")
                 self.ln(4)
 
         self._render_optional_table(
@@ -842,10 +866,10 @@ class DesignReportPDF(FPDF):
             self.add_notice("Section unavailable", snapshot.predictions.notice or "Predictions are unavailable for this response.", kind="warning")
         else:
             table = pd.DataFrame({
-                "Run": range(1, len(snapshot.responses) + 1),
                 "Observed": snapshot.responses[response],
                 "Predicted": snapshot.predictions.data[response],
             })
+            table = pd.concat([self._experiment_identifiers(snapshot), table.reset_index(drop=True)], axis=1)
             self.add_table_from_df(table, row_color_mode="ROWS")
 
     def _render_report_notes(self):
@@ -858,9 +882,11 @@ class DesignReportPDF(FPDF):
         for notice in self._report_notices:
             self.add_notice("Unavailable section", notice, kind="warning")
 
-    def _render_design_matrix_appendix(self, design_matrix: pd.DataFrame):
-        matrix = design_matrix.reset_index(drop=True).copy(deep=True)
-        matrix.insert(0, "Run", range(1, len(matrix) + 1))
+    def _render_design_matrix_appendix(self, snapshot: _ReportSnapshot):
+        matrix = pd.concat([
+            self._experiment_identifiers(snapshot),
+            snapshot.design_matrix.reset_index(drop=True).copy(deep=True),
+        ], axis=1)
         landscape_width = max(self.w, self.h) - self.l_margin - self.r_margin
         groups = self._split_design_matrix(matrix, max_width=landscape_width)
         for index, group in enumerate(groups, start=1):
@@ -868,7 +894,7 @@ class DesignReportPDF(FPDF):
             suffix = " - Design Matrix" if len(groups) == 1 else f" - Design Matrix ({index}/{len(groups)})"
             self.add_appendix_title(suffix)
             if len(groups) > 1:
-                self.add_paragraph("Wide matrices are split into column groups; the Run column is repeated in every group.")
+                self.add_paragraph("Wide matrices are split into column groups; the experiment identifiers are repeated in every group.")
                 self.ln(2)
             self.add_table_from_df(group, row_color_mode="ROWS", font_size=7)
 
@@ -913,7 +939,7 @@ class DesignReportPDF(FPDF):
         for response in snapshot.responses.columns:
             self._render_response(response, snapshot, diagnostics)
         self._render_report_notes()
-        self._render_design_matrix_appendix(snapshot.design_matrix)
+        self._render_design_matrix_appendix(snapshot)
 
         payload = bytes(self.output())
         self._atomic_write(output, payload)

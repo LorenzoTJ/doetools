@@ -10,6 +10,13 @@ where it is compatible with Python's versioning rules.
 
 ### Changed
 
+- Experiment tables now use `Run` for laboratory execution order and `Idx` for
+  the stable experiment identifier, both numbered from 1. Internal pandas
+  indices remain zero-based. Imports reject the old `Exp. Order` and `Exp. Idx`
+  headers: rename them and add 1 to their previous zero-based values. Diagnostic
+  plots and PDF experiment tables now use the same identifiers; PDFs show `Run`
+  only when execution metadata was imported.
+
 - Experimental-plan exports now default to `design_matrix.csv` for all designs,
   including D-optimal augmentation. The destination extension selects CSV or XLSX;
   pass an explicit `.xlsx` destination to retain Excel output. CSV uses UTF-8,
