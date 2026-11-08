@@ -8,6 +8,8 @@ where it is compatible with Python's versioning rules.
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-11-7
+
 ### Added
 
 - Public `export_plot(fig, destination, scale=3, width=None, height=None)` helper
@@ -42,6 +44,8 @@ where it is compatible with Python's versioning rules.
   including D-optimal augmentation. The destination extension selects CSV or XLSX;
   pass an explicit `.xlsx` destination to retain Excel output. CSV uses UTF-8,
   comma-separated fields, and a decimal point. Excel support remains included.
+
+[0.1.11]: https://github.com/LorenzoTJ/doetools/releases/tag/v0.1.11
 
 ## [0.1.10] - 2026-11-3
 
