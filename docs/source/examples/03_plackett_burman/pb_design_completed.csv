@@ -1,0 +1,13 @@
+Run,Idx,Resin type,Press type,Press time,Press pressure,Press temperature,Oven temperature,Oven time,Scorching time,Scorching temperature,Pressure at high temperature,Pressure at low temperature,Y1
+1,7,Fast,Old,-1,-1,1,-1,1,1,-1,1,1,133
+2,4,Slow,New,-1,1,1,-1,1,1,1,-1,-1,100
+3,6,Slow,Old,-1,1,-1,1,1,-1,1,1,1,173
+4,12,Slow,Old,-1,-1,-1,-1,-1,-1,-1,-1,-1,236
+5,8,Fast,New,-1,-1,-1,1,-1,1,1,-1,1,131
+6,5,Slow,Old,1,-1,1,1,-1,1,1,1,-1,93
+7,3,Fast,Old,1,1,-1,1,1,1,-1,-1,-1,152
+8,10,Slow,New,1,1,-1,-1,-1,1,-1,1,1,157
+9,11,Fast,Old,1,1,1,-1,-1,-1,1,-1,1,101
+10,9,Fast,New,1,-1,-1,-1,1,-1,1,1,-1,157
+11,2,Slow,New,1,-1,1,1,1,-1,-1,-1,1,121
+12,1,Fast,New,-1,1,1,1,-1,-1,-1,1,-1,163
