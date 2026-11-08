@@ -240,6 +240,11 @@ adds a response selector to every view.
    )
    normality = design.plot_diagnostics(response="Yield", view="qq")
 
+``x_axis="exp_order"`` uses imported ``Run`` values, while ``"exp_idx"`` uses
+``Idx``. ``"sequence"`` uses the internal row sequence from 1. Axis labels are
+``Run``, ``Idx``, and ``Sequence``, respectively; without execution metadata,
+the default axis falls back to ``Idx``.
+
 Model effects
 -------------
 

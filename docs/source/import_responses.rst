@@ -15,7 +15,35 @@ Import experimental results after lab execution.
 .. note::
     Export the design with a ``responses`` list before importing results. The
     imported file must contain all of those named response columns and the
-    unmodified ``Exp. Idx`` column.
+    unmodified ``Idx`` column.
+
+``Idx`` must contain each integer from 1 to the number of experiments exactly
+once. Results are matched by ``Idx``, regardless of file row order. ``Run`` is
+optional; when present, it must also be a permutation of 1 through N and is
+retained as execution-order metadata.
+
+Migrating older files
+---------------------
+
+The old ``Exp. Order`` and ``Exp. Idx`` headers are rejected. For files exported
+with the previous zero-based numbering, rename both columns and add 1 to their
+values before importing:
+
+.. code-block:: python
+
+   import pandas as pd
+
+   completed = pd.read_csv("old_results.csv")
+   completed = completed.rename(columns={"Exp. Order": "Run", "Exp. Idx": "Idx"})
+   for column in ("Run", "Idx"):
+       if column in completed:
+           completed[column] = completed[column] + 1
+   design.import_responses(completed)
+
+The same migration applies to existing-design and confirmation-run inputs.
+
+Examples
+--------
 
 .. automethod:: doetools.utils.abstract_design.Design.import_responses
 

@@ -30,7 +30,7 @@ def response_file(tmp_path, request):
     path = tmp_path / f"existing_responses.{request.param}"
     frame = pd.DataFrame(
         {
-            "Exp. Idx": [2, 0, 1],
+            "Idx": [3, 1, 2],
             "X1": [10.0, 0.0, 5.0],
             "X2": [0.0, 0.0, 10.0],
             "Yield": [30.0, 10.0, 20.0],
@@ -354,7 +354,7 @@ class TestComputeAndSelect:
             responses=["Yield"], randomize=randomize, destination=output, coded=coded
         )
         exported = pd.read_csv(output) if extension == "csv" else pd.read_excel(output)
-        exported = exported.sort_values("Exp. Idx").reset_index(drop=True)
+        exported = exported.sort_values("Idx").reset_index(drop=True)
         expected = design._coded_design_matrix if coded else design._design_matrix
         np.testing.assert_allclose(exported[["X1", "X2"]], expected[["X1", "X2"]])
         assert exported["Yield"].iloc[:3].tolist() == [10, 20, 30]

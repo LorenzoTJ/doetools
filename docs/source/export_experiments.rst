@@ -10,6 +10,12 @@ write an Excel workbook instead. The extension selects the format; supported
 extensions are ``.csv`` and ``.xlsx`` (case-insensitive). Omitting the destination
 writes ``design_matrix.csv``.
 
+Both identifiers start at 1. ``Run`` is the laboratory execution order, while
+``Idx`` is the stable identifier of a row in the internal design. For example,
+randomized output may begin with ``Run=1, Idx=3`` followed by ``Run=2, Idx=1``.
+The internal pandas matrix indices remain zero-based. The names ``Run`` and
+``Idx`` are reserved and cannot be used for exported factors or responses.
+
 If you plan to import measured results with :meth:`import_responses`, define the
 response names when exporting. Those names are retained by the design and identify
 the response columns expected during import.
@@ -58,10 +64,10 @@ export_experiments
 Export a design matrix to CSV or XLSX for laboratory execution.
 
 .. note::
-    ``Exp. Order`` is the planned sequence in which to perform the runs. Follow it
+    ``Run`` is the planned sequence in which to perform the runs. Follow it
     during laboratory execution; it is randomized when ``randomize=True``.
 
-    ``Exp. Idx`` is the stable identifier of the original internal design row. Do
+    ``Idx`` is the stable identifier of the original internal design row. Do
     not edit it: :meth:`import_responses` uses it to associate measured responses
     with the correct run and restore the internal design order.
 

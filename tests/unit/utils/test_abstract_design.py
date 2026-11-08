@@ -773,7 +773,7 @@ def test_import_responses_accepts_dataframe_defensively(mock_design_ff):
     design._response_list = ["Yield"]
     source = pd.DataFrame(
         {
-            "Exp. Idx": list(reversed(range(9))),
+            "Idx": list(reversed(range(1, 10))),
             "Yield": [float(value) for value in range(9)],
         }
     )
@@ -810,8 +810,8 @@ class TestExportImport:
         # Read back the file and verify structure
         df = (pd.read_csv(output_file) if extension == "csv" else pd.read_excel(output_file))
         
-        assert "Exp. Order" in df.columns
-        assert "Exp. Idx" in df.columns
+        assert "Run" in df.columns
+        assert "Idx" in df.columns
         assert "A" in df.columns
         assert "B" in df.columns
         assert "Yield" in df.columns
@@ -823,7 +823,7 @@ class TestExportImport:
         assert all(df["Purity"] == 0.0)
         
         # Verify experimental order is sequential (not randomized)
-        assert list(df["Exp. Order"]) == list(range(9))
+        assert list(df["Run"]) == list(range(1, 10))
     
     def test_export_experiments_coded(self, mock_design_ff, tmp_path, extension):
         """Test export with coded factor values."""
@@ -862,12 +862,12 @@ class TestExportImport:
         
         df = (pd.read_csv(output_file) if extension == "csv" else pd.read_excel(output_file))
         
-        # Verify that Exp. Order exists and contains a valid permutation
-        assert "Exp. Order" in df.columns
+        # Verify that Run exists and contains a valid permutation
+        assert "Run" in df.columns
         # All values from 0-8 should be present (valid permutation)
-        assert set(df["Exp. Order"]) == set(range(9))
+        assert set(df["Run"]) == set(range(1, 10))
         # Verify order is actually randomized (not sequential)
-        assert list(df["Exp. Idx"]) != list(range(9))
+        assert list(df["Idx"]) != list(range(1, 10))
     
     def test_export_experiments_no_responses(self, mock_design_ff, tmp_path, extension):
         """Test export without response columns."""
@@ -884,8 +884,8 @@ class TestExportImport:
         df = (pd.read_csv(output_file) if extension == "csv" else pd.read_excel(output_file))
         
         # Should only have order, index, and factor columns
-        assert "Exp. Order" in df.columns
-        assert "Exp. Idx" in df.columns
+        assert "Run" in df.columns
+        assert "Idx" in df.columns
         assert "A" in df.columns
         assert "B" in df.columns
         assert "Yield" not in df.columns
@@ -930,7 +930,7 @@ class TestExportImport:
         # Create a file with wrong number of rows
         wrong_file = tmp_path / f"wrong_size.{extension}"
         df = pd.DataFrame({
-            "Exp. Idx": [0, 1, 2],
+            "Idx": [1, 2, 3],
             "Yield": [45.2, 78.5, 62.3],
             "Purity": [88.5, 91.2, 85.7]
         })
@@ -951,7 +951,7 @@ class TestExportImport:
         # Create a file missing expected response columns
         missing_file = tmp_path / f"missing_cols.{extension}"
         df = pd.DataFrame({
-            "Exp. Idx": list(range(9)),
+            "Idx": list(range(1, 10)),
             "Yield": [45.2, 78.5, 62.3, 89.1, 55.8, 92.4, 88.0, 76.5, 95.0],
             # Missing "Purity" column
         })
@@ -983,19 +983,19 @@ class TestExportImport:
         df = (pd.read_csv(export_file) if extension == "csv" else pd.read_excel(export_file))
         
         # Add response data in the randomized order shown in the file
-        # These values are assigned based on the Exp. Order (randomized sequence)
+        # These values are assigned based on the Run (randomized sequence)
         df["Yield"] = [45.2, 78.5, 62.3, 89.1, 55.8, 92.4, 88.0, 76.5, 95.0]
         
         # Map the response values to their original experiment indices
-        # This creates the expected order after import reorders by Exp. Idx
-        expected_order = df.sort_values("Exp. Idx")["Yield"].values
+        # This creates the expected order after import reorders by Idx
+        expected_order = df.sort_values("Idx")["Yield"].values
         
         if extension == "csv":
             df.to_csv(export_file, index=False)
         else:
             df.to_excel(export_file, index=False)
         
-        # Import should reorder by Exp. Idx
+        # Import should reorder by Idx
         design.import_responses(source=str(export_file))
         
         # Verify data is correctly ordered by exp index

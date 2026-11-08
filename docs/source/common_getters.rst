@@ -243,7 +243,7 @@ Responses
 .. automethod:: doetools.utils.summary.DesignSummaryMixin.get_responses
 
 Returns the response columns loaded by :meth:`import_responses`, aligned to the
-internal design order through ``Exp. Idx``.
+internal design order through ``Idx``.
 
 .. code-block:: python
 
