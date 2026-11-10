@@ -60,14 +60,9 @@ Or add `doetools` to a project managed by
 uv add doetools
 ```
 
-To install the current development version from GitHub:
-
-```bash
-python -m pip install "git+https://github.com/LorenzoTJ/doetools.git@dev"
-```
-
-For a local development checkout, see the
-[full installation guide](https://doetools.readthedocs.io/en/latest/getting_started/installation.html#development-installation-from-source).
+Static plot export requires the `export` extra and Chrome/Chromium.
+See the [installation guide](https://doetools.readthedocs.io/en/latest/getting_started/installation.html)
+for optional dependencies, virtual environments, and development setup.
 
 ## Quick start
 
@@ -110,29 +105,12 @@ A typical analysis continues by completing the exported table, importing the
 responses with `design.import_responses(...)`, defining `ModelTerms`, and calling
 `design.compute_mlr_model()`.
 
-CSV is the default export format (`design_matrix.csv`). To export Excel, pass
-`destination="experiments.xlsx"`. Imports accept CSV, XLSX, or a pandas DataFrame.
 
 ## Documentation and examples
 
-For high-resolution static plots, install `pip install "doetools[export]"`
-and Chrome/Chromium, then use the returned Plotly figure:
-
-```python
-from doetools import export_plot
-
-fig = design.plot_design("Temperature", "Pressure")
-export_plot(fig, "design.png")  # scale=3 by default
-export_plot(fig, "design.svg")  # vector output for 2D plots
-```
-
-See the plotting guide for image dimensions, 3D export limitations, and notebook
-download-button settings. Interactive plotting does not require the export extra.
-
-The documentation is built with Sphinx.
-
 - [Full documentation](https://doetools.readthedocs.io/en/latest/)
 - [Complete example notebooks](https://doetools.readthedocs.io/en/latest/examples/index.html)
+- [Plotting and image export](https://doetools.readthedocs.io/en/latest/plots.html)
 
 ## Development
 
